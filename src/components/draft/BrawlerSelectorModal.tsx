@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BRAWLERS } from '../../domain/data/brawlers';
 import { Brawler } from '../../domain/models/brawler';
 import { BrawlerArchetype } from '../../domain/models/types';
@@ -9,6 +9,7 @@ interface Props {
   isOpen: boolean;
   unavailableIds: string[];
   title?: string;
+  initialArchetype?: BrawlerArchetype | 'ALL';
   onClose: () => void;
   onSelect: (brawler: Brawler) => void;
 }
@@ -17,13 +18,21 @@ export const BrawlerSelectorModal: React.FC<Props> = ({
   isOpen,
   unavailableIds,
   title = 'Select Brawler',
+  initialArchetype = 'ALL',
   onClose,
   onSelect,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedArchetype, setSelectedArchetype] = useState<BrawlerArchetype | 'ALL'>('ALL');
+  const [selectedArchetype, setSelectedArchetype] = useState<BrawlerArchetype | 'ALL'>(initialArchetype);
   const [filterHC, setFilterHC] = useState(false);
   const [filterCC, setFilterCC] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedArchetype(initialArchetype);
+      setSearchTerm('');
+    }
+  }, [isOpen, initialArchetype]);
 
   if (!isOpen) return null;
 

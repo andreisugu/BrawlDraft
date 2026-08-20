@@ -304,6 +304,7 @@ export const DraftRoom: React.FC = () => {
       <BrawlerSelectorModal
         isOpen={modalOpen}
         unavailableIds={unavailableIds}
+        initialArchetype={selectedArchetypeFilter}
         title={
           selectedTargetSlot
             ? `Assign Brawler to ${selectedTargetSlot.side === 'teamA' ? 'Team A' : 'Team B'} ${
