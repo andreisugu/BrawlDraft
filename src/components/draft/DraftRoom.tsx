@@ -5,9 +5,10 @@ import { DraftSession, getAllBannedBrawlers, getAllPickedBrawlers } from '../../
 import { DraftBoard } from './DraftBoard';
 import { RecommendationsPanel } from './RecommendationsPanel';
 import { BrawlerSelectorModal } from './BrawlerSelectorModal';
+import { BrawlerPoolModal } from './BrawlerPoolModal';
 import { Brawler } from '../../domain/models/brawler';
 import { BrawlerArchetype, DraftSide } from '../../domain/models/types';
-import { RefreshCw, MapPin, Info, PlusCircle, FastForward, Shield } from 'lucide-react';
+import { RefreshCw, MapPin, Info, PlusCircle, FastForward, Shield, Star } from 'lucide-react';
 
 export const DraftRoom: React.FC = () => {
   const [selectedMap, setSelectedMap] = useState<BrawlMap>(MAPS[0]);
@@ -19,6 +20,24 @@ export const DraftRoom: React.FC = () => {
     side: 'teamA' | 'teamB';
     index: number;
   } | null>(null);
+
+  // Preferred / Maxed Brawler Pool (Persisted in localStorage)
+  const [preferredPool, setPreferredPool] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('brawldraft_preferred_pool');
+      return saved ? JSON.parse(saved) : ['nori', 'brock', 'byron', 'poco', 'max', 'squeak', 'meeple', 'bolt', 'crow'];
+    } catch {
+      return ['nori', 'brock', 'byron', 'poco', 'max', 'squeak', 'meeple', 'bolt', 'crow'];
+    }
+  });
+  const [poolModalOpen, setPoolModalOpen] = useState(false);
+
+  const handleSavePool = (newPool: string[]) => {
+    setPreferredPool(newPool);
+    try {
+      localStorage.setItem('brawldraft_preferred_pool', JSON.stringify(newPool));
+    } catch {}
+  };
 
   const handleFilterArchetype = (arch: BrawlerArchetype | 'ALL') => {
     setSelectedArchetypeFilter(arch);
@@ -268,10 +287,19 @@ export const DraftRoom: React.FC = () => {
               <span>{skipBans ? 'Bans: Skipped' : 'Bans: Active'}</span>
             </button>
 
+            {/* Preferred Brawlers Pool Button */}
+            <button
+              onClick={() => setPoolModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider border border-amber-500/50 bg-amber-950/40 text-amber-300 hover:bg-amber-900/50 shadow-md shadow-amber-500/10 transition-all cursor-pointer"
+            >
+              <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+              <span>My Pool ({preferredPool.length > 0 ? `${preferredPool.length} Maxed` : 'All'})</span>
+            </button>
+
             {/* Quick Picker Modal button */}
             <button
               onClick={() => setModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 text-xs font-black border border-yellow-500/40 transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 text-xs font-black border border-yellow-500/40 transition-colors cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
               <span>Browse All</span>
@@ -280,7 +308,7 @@ export const DraftRoom: React.FC = () => {
             {/* Reset Button */}
             <button
               onClick={handleReset}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-bold transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-bold transition-colors cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Reset</span>
@@ -314,6 +342,8 @@ export const DraftRoom: React.FC = () => {
         session={session}
         skipBans={skipBans}
         selectedArchetypeFilter={selectedArchetypeFilter}
+        preferredBrawlerIds={preferredPool}
+        onOpenPoolModal={() => setPoolModalOpen(true)}
         onFilterChange={setSelectedArchetypeFilter}
         onToggleSkipBans={() => setSkipBans(!skipBans)}
         onSelectBrawler={handleSelectBrawlerId}
@@ -336,6 +366,14 @@ export const DraftRoom: React.FC = () => {
           setSelectedTargetSlot(null);
         }}
         onSelect={(brawler: Brawler) => handleSelectBrawlerId(brawler.id)}
+      />
+
+      {/* Preferred Brawler Pool Modal */}
+      <BrawlerPoolModal
+        isOpen={poolModalOpen}
+        selectedIds={preferredPool}
+        onClose={() => setPoolModalOpen(false)}
+        onSave={handleSavePool}
       />
     </div>
   );

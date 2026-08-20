@@ -20,12 +20,15 @@ import {
   Crosshair,
   Eye,
   Users,
+  Star,
 } from 'lucide-react';
 
 interface Props {
   session: DraftSession;
   skipBans?: boolean;
   selectedArchetypeFilter?: BrawlerArchetype | 'ALL';
+  preferredBrawlerIds?: string[];
+  onOpenPoolModal?: () => void;
   onFilterChange?: (arch: BrawlerArchetype | 'ALL') => void;
   onToggleSkipBans?: () => void;
   onSelectBrawler: (brawlerId: string) => void;
@@ -35,6 +38,8 @@ export const RecommendationsPanel: React.FC<Props> = ({
   session,
   skipBans = false,
   selectedArchetypeFilter = 'ALL',
+  preferredBrawlerIds = [],
+  onOpenPoolModal,
   onFilterChange,
   onToggleSkipBans,
   onSelectBrawler,
@@ -65,6 +70,12 @@ export const RecommendationsPanel: React.FC<Props> = ({
   // Current turn side
   const currentPickingSide = getPickTeamForSlot(session.currentSlot);
   const isAllyTurn = currentPickingSide === session.userSide;
+
+  // Preferred Brawler Pool picks (for ally turns)
+  const poolRecs =
+    isAllyTurn && preferredBrawlerIds.length > 0
+      ? pickRecs.filter(r => preferredBrawlerIds.includes(r.brawler.id)).slice(0, 3)
+      : [];
 
   return (
     <div id="recommendations-panel" className="bg-gray-900/90 border border-gray-800 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-md space-y-6">
@@ -409,11 +420,95 @@ export const RecommendationsPanel: React.FC<Props> = ({
         </div>
       )}
 
-      {/* PICK PHASE RECOMMENDATIONS */}
+      {/* PREFERRED / MAXED POOL RECOMMENDATIONS (YOUR TEAM TOP 3) */}
+      {!isComplete && !isBanPhase && isAllyTurn && preferredBrawlerIds.length > 0 && poolRecs.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-950/40 via-yellow-950/30 to-amber-950/40 border border-amber-500/50 rounded-3xl p-4 sm:p-5 space-y-4 shadow-xl shadow-amber-500/10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-amber-500/30">
+            <div className="flex items-center gap-2">
+              <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+              <h3 className="font-brawl text-lg text-amber-300 tracking-wide">
+                YOUR PREFERRED POOL TOP PICKS
+              </h3>
+            </div>
+            <button
+              onClick={onOpenPoolModal}
+              className="text-xs font-bold text-amber-400 hover:text-amber-300 underline cursor-pointer self-start sm:self-auto"
+            >
+              ⚙️ Manage Pool ({preferredBrawlerIds.length} Maxed)
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {poolRecs.map((rec, index) => {
+              const bobbyColor = BOBBY_COLOR_STYLES[rec.brawler.colorTag];
+
+              return (
+                <div
+                  key={rec.brawler.id}
+                  className="bg-gray-950/90 border border-amber-500/40 hover:border-amber-400 rounded-2xl p-3.5 flex flex-col justify-between space-y-3 transition-all shadow-lg hover:scale-[1.02]"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="relative">
+                          <BrawlerAvatar brawler={rec.brawler} size="md" showBobbyColor={true} />
+                          <span className="absolute -top-2 -left-2 px-1.5 py-0.5 bg-amber-400 text-black text-[10px] font-black rounded-full shadow-md">
+                            #{index + 1}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-brawl text-white text-base leading-tight">
+                            {rec.brawler.name}
+                          </h4>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] text-gray-300 font-semibold uppercase">
+                              {rec.brawler.archetype.replace('_', ' ')}
+                            </span>
+                            <span className={`text-[8px] px-1 py-0.2 rounded font-black ${bobbyColor.badgeBg} ${bobbyColor.text}`}>
+                              {bobbyColor.label}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded bg-amber-400 text-black text-xs font-black shadow">
+                        {rec.grade}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-gray-300 leading-tight bg-gray-900/60 p-2 rounded-xl border border-gray-800/80">
+                      {rec.rationale}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => onSelectBrawler(rec.brawler.id)}
+                    className="w-full py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black font-brawl tracking-wider text-xs transition-all shadow-md shadow-amber-400/20 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>PICK {rec.brawler.name.toUpperCase()}</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* PICK PHASE RECOMMENDATIONS (GLOBAL META) */}
       {!isComplete && !isBanPhase && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredPickRecs.slice(0, 9).map(rec => {
-            const bobbyColor = BOBBY_COLOR_STYLES[rec.brawler.colorTag];
+        <div className="space-y-3">
+          {preferredBrawlerIds.length > 0 && isAllyTurn && (
+            <div className="flex items-center gap-2 pt-2">
+              <Brain className="w-4 h-4 text-gray-400" />
+              <span className="text-xs uppercase font-black tracking-wider text-gray-400">
+                Full Competitive Meta Recommendations (All Brawlers)
+              </span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredPickRecs.slice(0, 9).map(rec => {
+              const bobbyColor = BOBBY_COLOR_STYLES[rec.brawler.colorTag];
 
             return (
               <div
@@ -498,6 +593,7 @@ export const RecommendationsPanel: React.FC<Props> = ({
               </div>
             );
           })}
+          </div>
         </div>
       )}
     </div>
