@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DraftSession } from '../../domain/models/draftSession';
+import { DraftSession, getPickTeamForSlot } from '../../domain/models/draftSession';
 import { DraftEngine, PickRecommendation, BanRecommendation } from '../../domain/engine/draftEngine';
 import { BrawlerAvatar, ARCHETYPE_ICONS, BOBBY_COLOR_STYLES } from '../common/BrawlerAvatar';
 import { BrawlerArchetype } from '../../domain/models/types';
@@ -59,6 +59,10 @@ export const RecommendationsPanel: React.FC<Props> = ({
   const enemyMid = enemyBrawlers.find(b => b.archetype === 'CONTROL' || b.archetype === 'ANTI_TANK') || enemyBrawlers[0];
   const enemySides = enemyBrawlers.filter(b => b?.id !== enemyMid?.id);
 
+  // Current turn side
+  const currentPickingSide = getPickTeamForSlot(session.currentSlot);
+  const isAllyTurn = currentPickingSide === session.userSide;
+
   return (
     <div className="bg-gray-900/90 border border-gray-800 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-md space-y-6">
       {/* Header */}
@@ -67,15 +71,19 @@ export const RecommendationsPanel: React.FC<Props> = ({
           <div className="flex items-center gap-2">
             {isComplete ? (
               <Trophy className="w-6 h-6 text-yellow-400 animate-bounce" />
-            ) : (
+            ) : isAllyTurn ? (
               <Brain className="w-6 h-6 text-yellow-400" />
+            ) : (
+              <Swords className="w-6 h-6 text-red-400" />
             )}
             <h2 className="font-brawl text-2xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
               {isComplete
                 ? '🏆 FINAL DRAFT MATCHUP & WIN CONDITIONS'
                 : isBanPhase
                 ? 'PRO BAN ADVISOR'
-                : 'LIVE ROLE DEDUCTIONS & RECOMMENDATIONS'}
+                : isAllyTurn
+                ? `YOUR TEAM RECOMMENDATIONS (PICK ${session.currentSlot})`
+                : `OPPONENT DRAFT PREDICTOR (PICK ${session.currentSlot})`}
             </h2>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
@@ -85,7 +93,9 @@ export const RecommendationsPanel: React.FC<Props> = ({
               ? session.userSide === 'TEAM_A'
                 ? 'Your team has 1st pick: Banning 2/3 flex stabilizers or cheese last-picks'
                 : 'Opponent has 1st pick: Banning top S-tier first picks on this map'
-              : `Analyzing drafted roles on both sides to deduce optimal counterpicks for Slot ${session.currentSlot}`}
+              : isAllyTurn
+              ? `Analyzing drafted roles on both sides to deduce optimal counterpicks for your team.`
+              : `Anticipating the enemy's optimal picks for Slot ${session.currentSlot}. Click to record what the opponent picked.`}
           </p>
         </div>
 
@@ -395,10 +405,18 @@ export const RecommendationsPanel: React.FC<Props> = ({
                 {/* Action Button */}
                 <button
                   onClick={() => onSelectBrawler(rec.brawler.id)}
-                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-brawl tracking-wider py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20 active:scale-95"
+                  className={`w-full font-brawl tracking-wider py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 ${
+                    isAllyTurn
+                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black shadow-yellow-500/20'
+                      : 'bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white shadow-red-600/20'
+                  }`}
                 >
                   <Check className="w-4 h-4 stroke-[3]" />
-                  <span>PICK {rec.brawler.name.toUpperCase()}</span>
+                  <span>
+                    {isAllyTurn
+                      ? `PICK ${rec.brawler.name.toUpperCase()}`
+                      : `ASSIGN ${rec.brawler.name.toUpperCase()} (ENEMY)`}
+                  </span>
                 </button>
               </div>
             );
