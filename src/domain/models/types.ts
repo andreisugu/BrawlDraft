@@ -24,17 +24,13 @@ export type BrawlerArchetype =
   | 'THROWER'
   | 'SUPPORT';
 
-export type BrawlerTrait =
-  | 'HIGH_BURST'
-  | 'CC_STUN'
-  | 'WALL_BREAK'
-  | 'PIERCE'
-  | 'HIGH_HYPERCHARGE'
-  | 'WATER_WALK'
-  | 'SAFE_MELTER'
-  | 'MASSIVE_HP'
-  | 'GAP_CLOSER'
-  | 'SPECIAL';
+export type BobbyColorTag =
+  | 'YELLOW' // Good Hypercharge / Buffy
+  | 'RED' // Knockback / Stun / Mute
+  | 'GREEN' // Wall Break
+  | 'BLUE_PIERCE' // Pierce Damage
+  | 'CYAN_SPECIAL' // Special in draft / mechanics
+  | 'WHITE_STANDARD'; // Standard
 
 export type MapTerrain =
   | 'OPEN'

@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
 import { MAPS } from '../../domain/data/maps';
 import { BrawlMap } from '../../domain/models/map';
-import { DraftSession, getPickTeamForSlot, getAllBannedBrawlers, getAllPickedBrawlers } from '../../domain/models/draftSession';
+import { DraftSession, getAllBannedBrawlers, getAllPickedBrawlers } from '../../domain/models/draftSession';
 import { DraftBoard } from './DraftBoard';
 import { RecommendationsPanel } from './RecommendationsPanel';
 import { BrawlerSelectorModal } from './BrawlerSelectorModal';
 import { Brawler } from '../../domain/models/brawler';
 import { DraftSide } from '../../domain/models/types';
-import { RefreshCw, MapPin, Info } from 'lucide-react';
+import { RefreshCw, MapPin, Info, PlusCircle } from 'lucide-react';
 
 export const DraftRoom: React.FC = () => {
   const [selectedMap, setSelectedMap] = useState<BrawlMap>(MAPS[0]);
   const [userSide, setUserSide] = useState<DraftSide>('TEAM_A');
+  const [selectedTargetSlot, setSelectedTargetSlot] = useState<{
+    type: 'PICK' | 'BAN';
+    side: 'teamA' | 'teamB';
+    index: number;
+  } | null>(null);
+
   const [session, setSession] = useState<DraftSession>({
     id: 'draft_session_live',
     map: MAPS[0],
@@ -37,6 +43,7 @@ export const DraftRoom: React.FC = () => {
       currentSlot: 1,
       isComplete: false,
     });
+    setSelectedTargetSlot(null);
   };
 
   // Handle user side change
@@ -59,31 +66,88 @@ export const DraftRoom: React.FC = () => {
       currentSlot: 1,
       isComplete: false,
     });
+    setSelectedTargetSlot(null);
   };
 
-  // Handle brawler lock in (from recommendation panel or modal)
-  const handleSelectBrawlerId = (brawlerId: string) => {
-    const isBanPhase = session.bans.teamA.length + session.bans.teamB.length < 6;
+  // Handle direct slot selection from the board
+  const handleSlotSelect = (target: { type: 'PICK' | 'BAN'; side: 'teamA' | 'teamB'; index: number }) => {
+    setSelectedTargetSlot(target);
+    setModalOpen(true);
+  };
 
-    if (isBanPhase) {
-      // Alternate bans between Team A and Team B
-      if (session.bans.teamA.length <= session.bans.teamB.length && session.bans.teamA.length < 3) {
-        setSession(prev => ({
+  // Handle clearing an individual slot
+  const handleClearSlot = (target: { type: 'PICK' | 'BAN'; side: 'teamA' | 'teamB'; index: number }) => {
+    setSession(prev => {
+      if (target.type === 'BAN') {
+        const newBans = [...prev.bans[target.side]];
+        newBans.splice(target.index, 1);
+        return {
           ...prev,
-          bans: { ...prev.bans, teamA: [...prev.bans.teamA, brawlerId] },
-        }));
-      } else if (session.bans.teamB.length < 3) {
-        setSession(prev => ({
+          bans: {
+            ...prev.bans,
+            [target.side]: newBans,
+          },
+        };
+      } else {
+        const newPicks = [...prev.picks[target.side]];
+        newPicks.splice(target.index, 1);
+        const totalPicks = newPicks.length + prev.picks[target.side === 'teamA' ? 'teamB' : 'teamA'].length;
+        return {
           ...prev,
-          bans: { ...prev.bans, teamB: [...prev.bans.teamB, brawlerId] },
-        }));
+          picks: {
+            ...prev.picks,
+            [target.side]: newPicks,
+          },
+          currentSlot: Math.min(6, totalPicks + 1) as any,
+          isComplete: false,
+        };
       }
-    } else {
-      // Pick phase
-      if (session.isComplete) return;
-      const pickingSide = getPickTeamForSlot(session.currentSlot);
+    });
+  };
 
-      setSession(prev => {
+  // Handle brawler lock-in (from recommendation panel or modal)
+  const handleSelectBrawlerId = (brawlerId: string) => {
+    setSession(prev => {
+      // If a specific target slot was selected by the user, populate that specific slot
+      if (selectedTargetSlot) {
+        if (selectedTargetSlot.type === 'BAN') {
+          const bans = [...prev.bans[selectedTargetSlot.side]];
+          bans[selectedTargetSlot.index] = brawlerId;
+          return {
+            ...prev,
+            bans: { ...prev.bans, [selectedTargetSlot.side]: bans },
+          };
+        } else {
+          const picks = [...prev.picks[selectedTargetSlot.side]];
+          picks[selectedTargetSlot.index] = brawlerId;
+          const totalPicks = picks.filter(Boolean).length + prev.picks[selectedTargetSlot.side === 'teamA' ? 'teamB' : 'teamA'].filter(Boolean).length;
+          return {
+            ...prev,
+            picks: { ...prev.picks, [selectedTargetSlot.side]: picks },
+            currentSlot: Math.min(6, totalPicks + 1) as any,
+            isComplete: totalPicks >= 6,
+          };
+        }
+      }
+
+      // Otherwise follow standard sequential draft flow
+      const isBanPhase = prev.bans.teamA.length + prev.bans.teamB.length < 6;
+      if (isBanPhase) {
+        if (prev.bans.teamA.length <= prev.bans.teamB.length && prev.bans.teamA.length < 3) {
+          return {
+            ...prev,
+            bans: { ...prev.bans, teamA: [...prev.bans.teamA, brawlerId] },
+          };
+        } else if (prev.bans.teamB.length < 3) {
+          return {
+            ...prev,
+            bans: { ...prev.bans, teamB: [...prev.bans.teamB, brawlerId] },
+          };
+        }
+      } else {
+        // Sequential pick
+        if (prev.isComplete) return prev;
+        const pickingSide = prev.currentSlot === 1 || prev.currentSlot === 4 || prev.currentSlot === 5 ? 'teamA' : 'teamB';
         const nextSlot = (prev.currentSlot + 1) as any;
         const isComplete = prev.currentSlot === 6;
 
@@ -91,16 +155,17 @@ export const DraftRoom: React.FC = () => {
           ...prev,
           picks: {
             ...prev.picks,
-            [pickingSide === 'TEAM_A' ? 'teamA' : 'teamB']: [
-              ...prev.picks[pickingSide === 'TEAM_A' ? 'teamA' : 'teamB'],
-              brawlerId,
-            ],
+            [pickingSide]: [...prev.picks[pickingSide], brawlerId],
           },
           currentSlot: isComplete ? 6 : nextSlot,
           isComplete,
         };
-      });
-    }
+      }
+
+      return prev;
+    });
+
+    setSelectedTargetSlot(null);
   };
 
   const unavailableIds = [...getAllBannedBrawlers(session), ...getAllPickedBrawlers(session)];
@@ -137,7 +202,7 @@ export const DraftRoom: React.FC = () => {
             </span>
           </div>
 
-          {/* User Pick Side (Coin Flip) & Reset Controls */}
+          {/* User Pick Side (Coin Flip), Search & Reset */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center bg-gray-950 p-1 rounded-xl border border-gray-800">
               <button
@@ -162,6 +227,15 @@ export const DraftRoom: React.FC = () => {
               </button>
             </div>
 
+            {/* Quick Picker Modal button */}
+            <button
+              onClick={() => setModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 text-xs font-black border border-yellow-500/40 transition-colors"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Browse All Brawlers</span>
+            </button>
+
             <button
               onClick={handleReset}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-bold transition-colors"
@@ -184,10 +258,15 @@ export const DraftRoom: React.FC = () => {
         )}
       </div>
 
-      {/* Main Draft Board (Team A vs Team B) */}
-      <DraftBoard session={session} />
+      {/* Main Draft Board (Team A vs Team B) with Click-to-Pick */}
+      <DraftBoard
+        session={session}
+        selectedTargetSlot={selectedTargetSlot}
+        onSlotSelect={handleSlotSelect}
+        onClearSlot={handleClearSlot}
+      />
 
-      {/* Real-time Recommendations Panel */}
+      {/* Real-time Recommendations Panel driven by Role Deductions */}
       <RecommendationsPanel
         session={session}
         onSelectBrawler={handleSelectBrawlerId}
@@ -197,8 +276,17 @@ export const DraftRoom: React.FC = () => {
       <BrawlerSelectorModal
         isOpen={modalOpen}
         unavailableIds={unavailableIds}
-        title={session.bans.teamA.length + session.bans.teamB.length < 6 ? 'Select Brawler to Ban' : 'Select Brawler to Pick'}
-        onClose={() => setModalOpen(false)}
+        title={
+          selectedTargetSlot
+            ? `Assign Brawler to ${selectedTargetSlot.side === 'teamA' ? 'Team A' : 'Team B'} ${
+                selectedTargetSlot.type === 'BAN' ? `Ban ${selectedTargetSlot.index + 1}` : `Pick ${selectedTargetSlot.index + 1}`
+              }`
+            : 'Select Brawler'
+        }
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedTargetSlot(null);
+        }}
         onSelect={(brawler: Brawler) => handleSelectBrawlerId(brawler.id)}
       />
     </div>

@@ -148,7 +148,7 @@ export const BrawlerSelectorModal: React.FC<Props> = ({
                   brawler={brawler}
                   size="md"
                   disabled={isUnavailable}
-                  showTraits={true}
+                  showBobbyColor={true}
                 />
               </div>
             );

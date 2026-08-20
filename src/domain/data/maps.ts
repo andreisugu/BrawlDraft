@@ -9,7 +9,7 @@ export const MAPS: BrawlMap[] = [
     terrain: 'SEMI_OPEN',
     description: 'Single centralized zone surrounded by grass and symmetrical side wall corridors.',
     proNotes: 'Lou and Crow are the top first picks. If enemy responds with long range (Amber/Belle/Pierce), punish with an aggressive Space Maker (Ollie/Kaze).',
-    bannedFirstPicksAggressive: ['crow', 'lou', 'clancy', 'colette', 'nyx', 'sirius'],
+    bannedFirstPicksAggressive: ['crow', 'lou', 'clancy', 'colette', 'naija', 'sirius'],
     keyPicks: ['lou', 'crow', 'clancy', 'ollie', 'amber', 'pierce'],
   },
   {
@@ -19,7 +19,7 @@ export const MAPS: BrawlMap[] = [
     terrain: 'SEMI_OPEN',
     description: 'Split corridors leading to a single large capture zone with side walls.',
     proNotes: 'Clancy and Lou are prioritized over generic anti-tanks due to unmatched area denial in the zone.',
-    bannedFirstPicksAggressive: ['crow', 'colette', 'nyx', 'clancy', 'sirius'],
+    bannedFirstPicksAggressive: ['crow', 'colette', 'naija', 'clancy', 'sirius'],
     keyPicks: ['clancy', 'crow', 'lou', 'otis', 'chester', 'juju', 'kaze'],
   },
 
@@ -31,7 +31,7 @@ export const MAPS: BrawlMap[] = [
     terrain: 'OPEN',
     description: 'Extremely open map with minimal cover, favoring snipers and long-range duels.',
     proNotes: 'If opponents pick triple squishy snipers (e.g. Nani, Piper, Bea) and lack wall breaks, a 6th pick Thrower (Tick/Sprout/Grom/Sirius) is an uncontestable 100% win.',
-    bannedFirstPicksPassive: ['nyx', 'gene', 'pierce', 'belle', 'byron'],
+    bannedFirstPicksPassive: ['naija', 'gene', 'pierce', 'belle', 'byron'],
     keyPicks: ['pierce', 'gene', 'rt', 'nani', 'belle', 'byron', 'tick'],
   },
   {
@@ -41,7 +41,7 @@ export const MAPS: BrawlMap[] = [
     terrain: 'SEMI_OPEN',
     description: 'Long lanes flanked by thick side bushes and center chokepoint.',
     proNotes: 'If your team has 1st pick, ban Belle or Byron to strip enemy of their best 2/3 flex snipers.',
-    bannedFirstPicksPassive: ['pierce', 'nyx', 'gene'],
+    bannedFirstPicksPassive: ['pierce', 'naija', 'gene'],
     keyPicks: ['pierce', 'belle', 'byron', 'gus', 'nani', 'leon', 'mortis'],
   },
 
@@ -53,7 +53,7 @@ export const MAPS: BrawlMap[] = [
     terrain: 'BUSHY',
     description: 'Dense field of grass across mid with side obstacles.',
     proNotes: 'Anti-Tanks are supreme. If enemy first picks Crow, immediately draft the next best Anti-Tanks (Nita, Otis, Chester) in the 2/3 slot.',
-    bannedFirstPicksAggressive: ['crow', 'colette', 'otis', 'chester', 'nyx', 'sirius'],
+    bannedFirstPicksAggressive: ['crow', 'colette', 'otis', 'chester', 'naija', 'sirius'],
     keyPicks: ['crow', 'otis', 'chester', 'nita', 'clancy', 'bull', 'bibi', 'frank'],
   },
   {
@@ -63,7 +63,7 @@ export const MAPS: BrawlMap[] = [
     terrain: 'SEMI_OPEN',
     description: 'Walled goal mouth with open center and flank channels.',
     proNotes: 'When you have 1st pick, ban high-value 2/3 flex control brawlers like Stu, Lumi, or Leon.',
-    bannedFirstPicksAggressive: ['crow', 'colette', 'otis', 'chester', 'nyx'],
+    bannedFirstPicksAggressive: ['crow', 'colette', 'otis', 'chester', 'naija'],
     keyPicks: ['crow', 'otis', 'chester', 'kenji', 'frank', 'draco', 'max'],
   },
 
@@ -74,8 +74,8 @@ export const MAPS: BrawlMap[] = [
     mode: 'KNOCKOUT',
     terrain: 'WALLED',
     description: 'Central circular wall fortress with symmetrical side bushes.',
-    proNotes: 'If enemy has 1st pick, ban Pierce, Gene, or Nyx. If enemy drafts low damage (e.g. Bo + Jay), draft Space Maker (Ollie) 5th pick to deny throwers.',
-    bannedFirstPicksPassive: ['pierce', 'gene', 'nyx'],
+    proNotes: 'If enemy has 1st pick, ban Pierce, Gene, or Naija. If enemy drafts low damage (e.g. Bo + Jay), draft Space Maker (Ollie) 5th pick to deny throwers.',
+    bannedFirstPicksPassive: ['pierce', 'gene', 'naija'],
     keyPicks: ['pierce', 'gene', 'rt', 'ollie', 'belle', 'byron', 'gus', 'leon'],
   },
   {
@@ -85,7 +85,7 @@ export const MAPS: BrawlMap[] = [
     terrain: 'SEMI_OPEN',
     description: 'Tight central choke corridor opening into side flanking lanes.',
     proNotes: 'Darryl or Bull with Gus shield is the premier 6th pick punish against low DPS / sniper + thrower compositions.',
-    bannedFirstPicksPassive: ['pierce', 'gene', 'nyx', 'rt'],
+    bannedFirstPicksPassive: ['pierce', 'gene', 'naija', 'rt'],
     keyPicks: ['rt', 'gus', 'pierce', 'darryl', 'bull', 'angelo', 'ollie', 'tick'],
   },
 
@@ -97,7 +97,7 @@ export const MAPS: BrawlMap[] = [
     terrain: 'SEMI_OPEN',
     description: 'Central mine surrounded by protective L-shaped walls and grass.',
     proNotes: 'If enemy first picks Ruffs, respond in 2/3 with a dominant Space Maker (Lily, Bull, Bibi) or top Anti-Tank.',
-    bannedFirstPicksAggressive: ['crow', 'colette', 'otis', 'chester', 'nyx', 'sirius'],
+    bannedFirstPicksAggressive: ['crow', 'colette', 'otis', 'chester', 'naija', 'sirius'],
     keyPicks: ['crow', 'chester', 'lily', 'kaze', 'shade', 'draco', 'gene'],
   },
   {
@@ -106,8 +106,8 @@ export const MAPS: BrawlMap[] = [
     mode: 'GEM_GRAB',
     terrain: 'BUSHY',
     description: 'Twin sweeping grass lanes with chokepoint gem mine.',
-    proNotes: 'When opponent has 1st pick, ban Crow, Colette, Otis, Chester, Nyx, or Sirius.',
-    bannedFirstPicksAggressive: ['crow', 'colette', 'otis', 'chester', 'nyx', 'sirius'],
+    proNotes: 'When opponent has 1st pick, ban Crow, Colette, Otis, Chester, Naija, or Sirius.',
+    bannedFirstPicksAggressive: ['crow', 'colette', 'otis', 'chester', 'naija', 'sirius'],
     keyPicks: ['crow', 'otis', 'chester', 'rosa', 'frank', 'draco', 'kenji'],
   },
 

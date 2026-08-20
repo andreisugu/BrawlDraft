@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { DraftSession } from '../../domain/models/draftSession';
 import { DraftEngine, PickRecommendation, BanRecommendation } from '../../domain/engine/draftEngine';
-import { BrawlerAvatar, ARCHETYPE_ICONS } from '../common/BrawlerAvatar';
+import { BrawlerAvatar, ARCHETYPE_ICONS, BOBBY_COLOR_STYLES } from '../common/BrawlerAvatar';
 import { BrawlerArchetype } from '../../domain/models/types';
-import { Sparkles, AlertTriangle, Check, Flame, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Check, Flame, ChevronRight, Brain, Lightbulb } from 'lucide-react';
 
 interface Props {
   session: DraftSession;
@@ -16,6 +16,7 @@ export const RecommendationsPanel: React.FC<Props> = ({ session, onSelectBrawler
   const isBanPhase = session.bans.teamA.length + session.bans.teamB.length < 6;
   const banRecs: BanRecommendation[] = isBanPhase ? DraftEngine.recommendBans(session) : [];
   const pickRecs: PickRecommendation[] = !isBanPhase ? DraftEngine.recommendPicks(session) : [];
+  const deductions = !isBanPhase ? DraftEngine.getDeductions(session) : [];
 
   const filteredPickRecs =
     selectedArchetypeFilter === 'ALL'
@@ -23,22 +24,22 @@ export const RecommendationsPanel: React.FC<Props> = ({ session, onSelectBrawler
       : pickRecs.filter(r => r.brawler.archetype === selectedArchetypeFilter);
 
   return (
-    <div className="bg-gray-900/80 border border-gray-800 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-md">
+    <div className="bg-gray-900/90 border border-gray-800 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-md space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-800">
         <div>
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-yellow-400" />
+            <Brain className="w-6 h-6 text-yellow-400" />
             <h2 className="font-brawl text-2xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
-              {isBanPhase ? 'PRO BAN ADVISOR' : 'PRO DRAFT RECOMMENDATIONS'}
+              {isBanPhase ? 'PRO BAN ADVISOR' : 'LIVE ROLE DEDUCTIONS & RECOMMENDATIONS'}
             </h2>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
             {isBanPhase
               ? session.userSide === 'TEAM_A'
-                ? 'Your team has 1st pick: Banning 2/3 flex stabilizers or cheese last picks'
+                ? 'Your team has 1st pick: Banning 2/3 flex stabilizers or cheese last-picks'
                 : 'Opponent has 1st pick: Banning top S-tier first picks on this map'
-              : `Turn Slot ${session.currentSlot} Recommendations based on Bobby's Pro Heuristics`}
+              : `Analyzing drafted roles on both sides to deduce optimal counterpicks for Slot ${session.currentSlot}`}
           </p>
         </div>
 
@@ -75,122 +76,186 @@ export const RecommendationsPanel: React.FC<Props> = ({ session, onSelectBrawler
         )}
       </div>
 
+      {/* STRATEGIC DEDUCTIONS CARDS (The Core Brain) */}
+      {!isBanPhase && deductions.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Lightbulb className="w-4 h-4 text-yellow-400" />
+            <span className="text-xs uppercase font-black tracking-wider text-yellow-400">
+              Active Strategic Deductions:
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {deductions.map(ded => (
+              <div
+                key={ded.id}
+                className="bg-gray-950/70 border border-gray-800 hover:border-yellow-400/40 rounded-2xl p-3.5 space-y-1.5 transition-all shadow-md"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{ded.icon}</span>
+                    <h4 className="font-bold text-xs text-white truncate max-w-[200px]">
+                      {ded.title}
+                    </h4>
+                  </div>
+                  <span
+                    className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
+                      ded.priority === 'CRITICAL'
+                        ? 'bg-rose-950 text-rose-400 border border-rose-500/40 animate-pulse'
+                        : ded.priority === 'HIGH'
+                        ? 'bg-amber-950 text-amber-400 border border-amber-500/40'
+                        : 'bg-blue-950 text-blue-400 border border-blue-500/40'
+                    }`}
+                  >
+                    {ded.priority}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-300 leading-relaxed">{ded.reason}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* BAN PHASE RECOMMENDATIONS */}
       {isBanPhase && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {banRecs.slice(0, 6).map(rec => (
-            <div
-              key={rec.brawler.id}
-              className="bg-gray-950/60 border border-gray-800 hover:border-red-500/50 rounded-2xl p-4 transition-all duration-200 flex flex-col justify-between group hover:shadow-xl hover:shadow-red-500/10"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-3">
-                    <BrawlerAvatar brawler={rec.brawler} size="md" />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-brawl text-lg text-white group-hover:text-red-400 transition-colors">
-                          {rec.brawler.name}
-                        </h4>
-                        <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-500/40">
-                          {rec.priority}
-                        </span>
+          {banRecs.slice(0, 6).map(rec => {
+            const bobbyColor = BOBBY_COLOR_STYLES[rec.brawler.colorTag];
+
+            return (
+              <div
+                key={rec.brawler.id}
+                className="bg-gray-950/60 border border-gray-800 hover:border-red-500/50 rounded-2xl p-4 transition-all duration-200 flex flex-col justify-between group hover:shadow-xl hover:shadow-red-500/10"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3">
+                      <BrawlerAvatar brawler={rec.brawler} size="md" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-brawl text-lg text-white group-hover:text-red-400 transition-colors">
+                            {rec.brawler.name}
+                          </h4>
+                          <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-500/40">
+                            {rec.priority}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-gray-400 font-semibold uppercase">
+                            {rec.brawler.archetype.replace('_', ' ')}
+                          </span>
+                          <span
+                            className={`text-[9px] px-1.5 py-0.5 rounded font-black ${bobbyColor.badgeBg} ${bobbyColor.text}`}
+                          >
+                            {bobbyColor.label}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-xs text-gray-400 font-semibold uppercase">
-                        {rec.brawler.archetype.replace('_', ' ')}
-                      </span>
                     </div>
                   </div>
+
+                  <p className="text-xs text-gray-300 leading-relaxed bg-gray-900/60 p-2.5 rounded-xl border border-gray-800/60">
+                    <span className="text-yellow-400 font-bold">Bobby Rationale: </span>
+                    {rec.rationale}
+                  </p>
                 </div>
 
-                <p className="text-xs text-gray-300 leading-relaxed bg-gray-900/60 p-2.5 rounded-xl border border-gray-800/60">
-                  <span className="text-yellow-400 font-bold">Bobby Rationale: </span>
-                  {rec.rationale}
-                </p>
+                <button
+                  onClick={() => onSelectBrawler(rec.brawler.id)}
+                  className="mt-4 w-full bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-brawl tracking-wider py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 active:scale-95"
+                >
+                  <span>BAN {rec.brawler.name.toUpperCase()}</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
-
-              <button
-                onClick={() => onSelectBrawler(rec.brawler.id)}
-                className="mt-4 w-full bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-brawl tracking-wider py-2 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 active:scale-95"
-              >
-                <span>BAN {rec.brawler.name.toUpperCase()}</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* PICK PHASE RECOMMENDATIONS */}
       {!isBanPhase && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredPickRecs.slice(0, 9).map(rec => (
-            <div
-              key={rec.brawler.id}
-              className="bg-gray-950/60 border border-gray-800 hover:border-yellow-500/50 rounded-2xl p-4 transition-all duration-200 flex flex-col justify-between group hover:shadow-xl hover:shadow-yellow-500/10"
-            >
-              <div>
-                {/* Header Info */}
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-3">
-                    <BrawlerAvatar brawler={rec.brawler} size="md" />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-brawl text-lg text-white group-hover:text-yellow-400 transition-colors">
-                          {rec.brawler.name}
-                        </h4>
-                        <span
-                          className={`text-[10px] font-black px-2 py-0.5 rounded ${
-                            rec.grade === 'S+'
-                              ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/30'
-                              : rec.grade === 'S'
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                              : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
-                          }`}
-                        >
-                          Grade {rec.grade}
-                        </span>
+          {filteredPickRecs.slice(0, 9).map(rec => {
+            const bobbyColor = BOBBY_COLOR_STYLES[rec.brawler.colorTag];
+
+            return (
+              <div
+                key={rec.brawler.id}
+                className="bg-gray-950/60 border border-gray-800 hover:border-yellow-500/50 rounded-2xl p-4 transition-all duration-200 flex flex-col justify-between group hover:shadow-xl hover:shadow-yellow-500/10"
+              >
+                <div>
+                  {/* Header Info */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3">
+                      <BrawlerAvatar brawler={rec.brawler} size="md" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-brawl text-lg text-white group-hover:text-yellow-400 transition-colors">
+                            {rec.brawler.name}
+                          </h4>
+                          <span
+                            className={`text-[10px] font-black px-2 py-0.5 rounded ${
+                              rec.grade === 'S+'
+                                ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/30'
+                                : rec.grade === 'S'
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                            }`}
+                          >
+                            Grade {rec.grade}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-gray-400 font-semibold uppercase">
+                            {rec.brawler.archetype.replace('_', ' ')}
+                          </span>
+                          <span
+                            className={`text-[9px] px-1.5 py-0.5 rounded font-black ${bobbyColor.badgeBg} ${bobbyColor.text}`}
+                          >
+                            {bobbyColor.label}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-xs text-gray-400 font-semibold uppercase flex items-center gap-1.5 mt-0.5">
-                        <span className="text-yellow-400 font-bold">{rec.roleInDraft}</span>
-                      </span>
                     </div>
+
+                    {rec.brawler.isOvertuned && (
+                      <span className="flex items-center gap-1 text-[10px] font-black text-rose-400 bg-rose-950/60 border border-rose-500/40 px-1.5 py-0.5 rounded">
+                        <Flame className="w-3 h-3" /> Meta
+                      </span>
+                    )}
                   </div>
 
-                  {rec.brawler.isOvertuned && (
-                    <span className="flex items-center gap-1 text-[10px] font-black text-rose-400 bg-rose-950/60 border border-rose-500/40 px-1.5 py-0.5 rounded">
-                      <Flame className="w-3 h-3" /> Meta
-                    </span>
-                  )}
+                  {/* Deduction / Rationale Box */}
+                  <div className="space-y-2 mb-3">
+                    <p className="text-xs text-gray-300 leading-relaxed bg-gray-900/60 p-2.5 rounded-xl border border-gray-800/60">
+                      <span className="text-yellow-400 font-bold">Pro Rationale: </span>
+                      {rec.rationale}
+                    </p>
+
+                    {/* Warning if any */}
+                    {rec.riskWarning && (
+                      <div className="flex items-start gap-2 text-[11px] font-semibold text-rose-400 bg-rose-950/40 border border-rose-500/30 p-2 rounded-xl">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>{rec.riskWarning}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Rationale Box */}
-                <div className="space-y-2 mb-3">
-                  <p className="text-xs text-gray-300 leading-relaxed bg-gray-900/60 p-2.5 rounded-xl border border-gray-800/60">
-                    <span className="text-yellow-400 font-bold">Pro Rationale: </span>
-                    {rec.rationale}
-                  </p>
-
-                  {/* Warning if any */}
-                  {rec.riskWarning && (
-                    <div className="flex items-start gap-2 text-[11px] font-semibold text-rose-400 bg-rose-950/40 border border-rose-500/30 p-2 rounded-xl">
-                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                      <span>{rec.riskWarning}</span>
-                    </div>
-                  )}
-                </div>
+                {/* Action Button */}
+                <button
+                  onClick={() => onSelectBrawler(rec.brawler.id)}
+                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-brawl tracking-wider py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20 active:scale-95"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>PICK {rec.brawler.name.toUpperCase()}</span>
+                </button>
               </div>
-
-              {/* Action Button */}
-              <button
-                onClick={() => onSelectBrawler(rec.brawler.id)}
-                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-brawl tracking-wider py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20 active:scale-95"
-              >
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>PICK {rec.brawler.name.toUpperCase()}</span>
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
