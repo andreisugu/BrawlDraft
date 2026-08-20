@@ -1,7 +1,14 @@
 /**
- * Direct high-resolution portrait URLs for all 101 Brawlers from Brawlify/BrawlAPI CDN.
+ * Direct high-resolution portrait URLs for all 107 Brawlers from Brawlify/BrawlAPI CDN.
  */
 export const BRAWLER_ICONS: Record<string, string> = {
+  // --- NEWEST RELEASES (2025-2026) ---
+  wendy: 'https://cdn.brawlify.com/brawlers/borderless/16000108.png',
+  nori: 'https://cdn.brawlify.com/brawlers/borderless/16000107.png',
+  bolt: 'https://cdn.brawlify.com/brawlers/borderless/16000106.png',
+  starr_nova: 'https://cdn.brawlify.com/brawlers/borderless/16000105.png',
+  damian: 'https://cdn.brawlify.com/brawlers/borderless/16000104.png',
+
   // --- THROWERS (11) ---
   barley: 'https://cdn.brawlify.com/brawlers/borderless/16000006.png',
   dynamike: 'https://cdn.brawlify.com/brawlers/borderless/16000009.png',
@@ -15,7 +22,7 @@ export const BRAWLER_ICONS: Record<string, string> = {
   willow: 'https://cdn.brawlify.com/brawlers/borderless/16000067.png',
   berry: 'https://cdn.brawlify.com/brawlers/borderless/16000082.png',
 
-  // --- TANKS (10) ---
+  // --- TANKS (11) ---
   trunk: 'https://cdn.brawlify.com/brawlers/borderless/16000096.png',
   draco: 'https://cdn.brawlify.com/brawlers/borderless/16000080.png',
   frank: 'https://cdn.brawlify.com/brawlers/borderless/16000020.png',
@@ -27,7 +34,8 @@ export const BRAWLER_ICONS: Record<string, string> = {
   rosa: 'https://cdn.brawlify.com/brawlers/borderless/16000024.png',
   ash: 'https://cdn.brawlify.com/brawlers/borderless/16000051.png',
 
-  // --- SPACE MAKERS / ASSASSINS (19) ---
+  // --- SPACE MAKERS / ASSASSINS (20) ---
+  bolt_sm: 'https://cdn.brawlify.com/brawlers/borderless/16000106.png',
   bull: 'https://cdn.brawlify.com/brawlers/borderless/16000002.png',
   bibi: 'https://cdn.brawlify.com/brawlers/borderless/16000026.png',
   ollie: 'https://cdn.brawlify.com/brawlers/borderless/16000090.png',
@@ -85,7 +93,7 @@ export const BRAWLER_ICONS: Record<string, string> = {
   doug: 'https://cdn.brawlify.com/brawlers/borderless/16000071.png',
   glowy: 'https://cdn.brawlify.com/brawlers/borderless/16000101.png',
 
-  // --- SNIPERS (11) ---
+  // --- SNIPERS (12) ---
   mandy: 'https://cdn.brawlify.com/brawlers/borderless/16000065.png',
   rt: 'https://cdn.brawlify.com/brawlers/borderless/16000066.png',
   gus: 'https://cdn.brawlify.com/brawlers/borderless/16000061.png',
@@ -98,7 +106,7 @@ export const BRAWLER_ICONS: Record<string, string> = {
   belle: 'https://cdn.brawlify.com/brawlers/borderless/16000046.png',
   bea: 'https://cdn.brawlify.com/brawlers/borderless/16000029.png',
 
-  // --- CONTROL (17) ---
+  // --- CONTROL (19) ---
   amber: 'https://cdn.brawlify.com/brawlers/borderless/16000040.png',
   meeple: 'https://cdn.brawlify.com/brawlers/borderless/16000089.png',
   leon: 'https://cdn.brawlify.com/brawlers/borderless/16000023.png',
