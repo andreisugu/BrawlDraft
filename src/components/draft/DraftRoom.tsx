@@ -7,11 +7,12 @@ import { RecommendationsPanel } from './RecommendationsPanel';
 import { BrawlerSelectorModal } from './BrawlerSelectorModal';
 import { Brawler } from '../../domain/models/brawler';
 import { DraftSide } from '../../domain/models/types';
-import { RefreshCw, MapPin, Info, PlusCircle } from 'lucide-react';
+import { RefreshCw, MapPin, Info, PlusCircle, FastForward, Shield } from 'lucide-react';
 
 export const DraftRoom: React.FC = () => {
   const [selectedMap, setSelectedMap] = useState<BrawlMap>(MAPS[0]);
   const [userSide, setUserSide] = useState<DraftSide>('TEAM_A');
+  const [skipBans, setSkipBans] = useState<boolean>(false);
   const [selectedTargetSlot, setSelectedTargetSlot] = useState<{
     type: 'PICK' | 'BAN';
     side: 'teamA' | 'teamB';
@@ -130,8 +131,8 @@ export const DraftRoom: React.FC = () => {
         }
       }
 
-      // Otherwise follow standard sequential draft flow
-      const isBanPhase = prev.bans.teamA.length + prev.bans.teamB.length < 6;
+      // If bans are NOT skipped and ban phase is active, fill bans
+      const isBanPhase = !skipBans && (prev.bans.teamA.length + prev.bans.teamB.length < 6);
       if (isBanPhase) {
         if (prev.bans.teamA.length <= prev.bans.teamB.length && prev.bans.teamA.length < 3) {
           return {
@@ -145,7 +146,7 @@ export const DraftRoom: React.FC = () => {
           };
         }
       } else {
-        // Sequential pick
+        // Sequential pick (Slot 1 -> Slot 6)
         if (prev.isComplete) return prev;
         const pickingSide = prev.currentSlot === 1 || prev.currentSlot === 4 || prev.currentSlot === 5 ? 'teamA' : 'teamB';
         const nextSlot = (prev.currentSlot + 1) as any;
@@ -202,8 +203,9 @@ export const DraftRoom: React.FC = () => {
             </span>
           </div>
 
-          {/* User Pick Side (Coin Flip), Search & Reset */}
+          {/* User Pick Side (Coin Flip), Skip Bans Toggle & Reset */}
           <div className="flex flex-wrap items-center gap-3">
+            {/* Coin Flip Side */}
             <div className="flex items-center bg-gray-950 p-1 rounded-xl border border-gray-800">
               <button
                 onClick={() => handleSideChange('TEAM_A')}
@@ -227,15 +229,29 @@ export const DraftRoom: React.FC = () => {
               </button>
             </div>
 
+            {/* Skip Bans Toggle */}
+            <button
+              onClick={() => setSkipBans(!skipBans)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
+                skipBans
+                  ? 'bg-purple-950/60 text-purple-300 border-purple-500/50 shadow-md shadow-purple-500/20'
+                  : 'bg-gray-950 text-gray-400 border-gray-800 hover:text-gray-200'
+              }`}
+            >
+              {skipBans ? <FastForward className="w-3.5 h-3.5 text-purple-400" /> : <Shield className="w-3.5 h-3.5" />}
+              <span>{skipBans ? 'Bans: Skipped' : 'Bans: Active'}</span>
+            </button>
+
             {/* Quick Picker Modal button */}
             <button
               onClick={() => setModalOpen(true)}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 text-xs font-black border border-yellow-500/40 transition-colors"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>Browse All Brawlers</span>
+              <span>Browse All</span>
             </button>
 
+            {/* Reset Button */}
             <button
               onClick={handleReset}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-bold transition-colors"
@@ -269,6 +285,8 @@ export const DraftRoom: React.FC = () => {
       {/* Real-time Recommendations Panel driven by Role Deductions */}
       <RecommendationsPanel
         session={session}
+        skipBans={skipBans}
+        onToggleSkipBans={() => setSkipBans(!skipBans)}
         onSelectBrawler={handleSelectBrawlerId}
       />
 

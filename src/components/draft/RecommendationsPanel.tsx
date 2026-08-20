@@ -3,17 +3,24 @@ import { DraftSession } from '../../domain/models/draftSession';
 import { DraftEngine, PickRecommendation, BanRecommendation } from '../../domain/engine/draftEngine';
 import { BrawlerAvatar, ARCHETYPE_ICONS, BOBBY_COLOR_STYLES } from '../common/BrawlerAvatar';
 import { BrawlerArchetype } from '../../domain/models/types';
-import { AlertTriangle, Check, Flame, ChevronRight, Brain, Lightbulb } from 'lucide-react';
+import { AlertTriangle, Check, Flame, ChevronRight, Brain, Lightbulb, FastForward, Shield } from 'lucide-react';
 
 interface Props {
   session: DraftSession;
+  skipBans?: boolean;
+  onToggleSkipBans?: () => void;
   onSelectBrawler: (brawlerId: string) => void;
 }
 
-export const RecommendationsPanel: React.FC<Props> = ({ session, onSelectBrawler }) => {
+export const RecommendationsPanel: React.FC<Props> = ({
+  session,
+  skipBans = false,
+  onToggleSkipBans,
+  onSelectBrawler,
+}) => {
   const [selectedArchetypeFilter, setSelectedArchetypeFilter] = useState<BrawlerArchetype | 'ALL'>('ALL');
 
-  const isBanPhase = session.bans.teamA.length + session.bans.teamB.length < 6;
+  const isBanPhase = !skipBans && (session.bans.teamA.length + session.bans.teamB.length < 6);
   const banRecs: BanRecommendation[] = isBanPhase ? DraftEngine.recommendBans(session) : [];
   const pickRecs: PickRecommendation[] = !isBanPhase ? DraftEngine.recommendPicks(session) : [];
   const deductions = !isBanPhase ? DraftEngine.getDeductions(session) : [];
@@ -43,37 +50,60 @@ export const RecommendationsPanel: React.FC<Props> = ({ session, onSelectBrawler
           </p>
         </div>
 
-        {/* Archetype Filter for Pick Phase */}
-        {!isBanPhase && (
-          <div className="flex flex-wrap gap-1">
+        {/* Ban Phase Skip Button & Filter Controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          {isBanPhase && onToggleSkipBans && (
             <button
-              onClick={() => setSelectedArchetypeFilter('ALL')}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-black uppercase transition-all ${
-                selectedArchetypeFilter === 'ALL'
-                  ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/20'
-                  : 'bg-gray-800 text-gray-400 hover:text-white'
-              }`}
+              onClick={onToggleSkipBans}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/40 text-purple-300 border border-purple-500/40 text-xs font-black uppercase transition-all shadow-md shadow-purple-600/20 active:scale-95"
             >
-              All
+              <FastForward className="w-3.5 h-3.5" />
+              <span>Skip Ban Phase →</span>
             </button>
-            {(['ANTI_TANK', 'SPACE_MAKER', 'TANK', 'CONTROL', 'SNIPER', 'THROWER', 'SUPPORT'] as BrawlerArchetype[]).map(
-              arch => (
-                <button
-                  key={arch}
-                  onClick={() => setSelectedArchetypeFilter(arch)}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase transition-all ${
-                    selectedArchetypeFilter === arch
-                      ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/20'
-                      : 'bg-gray-800/80 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {ARCHETYPE_ICONS[arch]}
-                  <span className="hidden sm:inline">{arch.replace('_', ' ')}</span>
-                </button>
-              )
-            )}
-          </div>
-        )}
+          )}
+
+          {!isBanPhase && onToggleSkipBans && (
+            <button
+              onClick={onToggleSkipBans}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold transition-all"
+            >
+              <Shield className="w-3.5 h-3.5 text-gray-400" />
+              <span>Show Bans</span>
+            </button>
+          )}
+
+          {/* Archetype Filter for Pick Phase */}
+          {!isBanPhase && (
+            <div className="flex flex-wrap gap-1">
+              <button
+                onClick={() => setSelectedArchetypeFilter('ALL')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-black uppercase transition-all ${
+                  selectedArchetypeFilter === 'ALL'
+                    ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/20'
+                    : 'bg-gray-800 text-gray-400 hover:text-white'
+                }`}
+              >
+                All
+              </button>
+              {(['ANTI_TANK', 'SPACE_MAKER', 'TANK', 'CONTROL', 'SNIPER', 'THROWER', 'SUPPORT'] as BrawlerArchetype[]).map(
+                arch => (
+                  <button
+                    key={arch}
+                    onClick={() => setSelectedArchetypeFilter(arch)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase transition-all ${
+                      selectedArchetypeFilter === arch
+                        ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/20'
+                        : 'bg-gray-800/80 text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    {ARCHETYPE_ICONS[arch]}
+                    <span className="hidden sm:inline">{arch.replace('_', ' ')}</span>
+                  </button>
+                )
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* STRATEGIC DEDUCTIONS CARDS (The Core Brain) */}
