@@ -1,9 +1,9 @@
 import React from 'react';
 import { DraftSession, getPickTeamForSlot } from '../../domain/models/draftSession';
 import { BRAWLER_MAP } from '../../domain/data/brawlers';
-import { BrawlerAvatar } from '../common/BrawlerAvatar';
+import { BrawlerAvatar, ARCHETYPE_ICONS } from '../common/BrawlerAvatar';
 import { DraftEngine } from '../../domain/engine/draftEngine';
-import { ShieldAlert, Zap, Heart, Crosshair, Ban, CheckCircle2, X } from 'lucide-react';
+import { ShieldAlert, Zap, Heart, Crosshair, Ban, CheckCircle2, X, Check, Target } from 'lucide-react';
 
 interface Props {
   session: DraftSession;
@@ -242,7 +242,7 @@ export const DraftBoard: React.FC<Props> = ({
           </div>
 
           {/* Ally Comp Analytics */}
-          <div className="bg-gray-950/60 rounded-xl p-3 border border-gray-800/80 space-y-2">
+          <div className="bg-gray-950/60 rounded-xl p-3.5 border border-gray-800/80 space-y-2.5">
             <div className="flex items-center justify-between text-xs font-bold text-gray-400">
               <span className="flex items-center gap-1.5 text-blue-300">
                 <Zap className="w-3.5 h-3.5 text-yellow-400" /> Burst DPS: {allyAnalysis.burstRating}%
@@ -255,6 +255,17 @@ export const DraftBoard: React.FC<Props> = ({
               </span>
             </div>
 
+            {/* Strengths */}
+            {allyAnalysis.strengths.map((str, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1 rounded-lg"
+              >
+                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>{str}</span>
+              </div>
+            ))}
+
             {/* Ally Comp Warnings */}
             {allyAnalysis.vulnerabilities.map((vuln, i) => (
               <div
@@ -265,6 +276,27 @@ export const DraftBoard: React.FC<Props> = ({
                 <span>{vuln}</span>
               </div>
             ))}
+
+            {/* Recommended Next Roles */}
+            {allyAnalysis.recommendedRoles.length > 0 && (
+              <div className="pt-1.5 border-t border-gray-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-300">
+                  <Target className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+                  <span>Ideal Next:</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {allyAnalysis.recommendedRoles.map(role => (
+                    <span
+                      key={role}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-900/40 border border-blue-500/40 text-[10px] font-black uppercase text-blue-200"
+                    >
+                      {ARCHETYPE_ICONS[role]}
+                      <span>{role.replace('_', ' ')}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -383,7 +415,7 @@ export const DraftBoard: React.FC<Props> = ({
           </div>
 
           {/* Enemy Comp Analytics */}
-          <div className="bg-gray-950/60 rounded-xl p-3 border border-gray-800/80 space-y-2">
+          <div className="bg-gray-950/60 rounded-xl p-3.5 border border-gray-800/80 space-y-2.5">
             <div className="flex items-center justify-between text-xs font-bold text-gray-400">
               <span className="flex items-center gap-1.5 text-red-300">
                 <Zap className="w-3.5 h-3.5 text-yellow-400" /> Burst DPS: {enemyAnalysis.burstRating}%
@@ -396,6 +428,17 @@ export const DraftBoard: React.FC<Props> = ({
               </span>
             </div>
 
+            {/* Enemy Strengths */}
+            {enemyAnalysis.strengths.map((str, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1 rounded-lg"
+              >
+                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>{str}</span>
+              </div>
+            ))}
+
             {/* Enemy Comp Warnings */}
             {enemyAnalysis.vulnerabilities.map((vuln, i) => (
               <div
@@ -406,6 +449,27 @@ export const DraftBoard: React.FC<Props> = ({
                 <span>{vuln}</span>
               </div>
             ))}
+
+            {/* Enemy Recommended Roles */}
+            {enemyAnalysis.recommendedRoles.length > 0 && (
+              <div className="pt-1.5 border-t border-gray-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-red-300">
+                  <Target className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+                  <span>Ideal Next:</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {enemyAnalysis.recommendedRoles.map(role => (
+                    <span
+                      key={role}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-900/40 border border-red-500/40 text-[10px] font-black uppercase text-red-200"
+                    >
+                      {ARCHETYPE_ICONS[role]}
+                      <span>{role.replace('_', ' ')}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

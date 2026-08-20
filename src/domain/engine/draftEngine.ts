@@ -42,6 +42,8 @@ export interface CompEvaluation {
   archetypeCounts: Record<BrawlerArchetype, number>;
   vulnerabilities: string[];
   strengths: string[];
+  recommendedRoles: BrawlerArchetype[];
+  compSummary: string;
 }
 
 export class DraftEngine {
@@ -87,6 +89,8 @@ export class DraftEngine {
 
     const vulnerabilities: string[] = [];
     const strengths: string[] = [];
+    const recommendedRoles: BrawlerArchetype[] = [];
+    let compSummary = '';
 
     const isFirstPickTeam = context?.isFirstPickTeam ?? true;
     const currentSlot = context?.currentSlot ?? 1;
@@ -95,7 +99,11 @@ export class DraftEngine {
       if (!hasAntiTank) {
         vulnerabilities.push('No Anti-Tank: Vulnerable to aggressive Tanks and Space Makers.');
       } else {
-        strengths.push('Solid Anti-Tank foundation.');
+        strengths.push('Solid Anti-Tank foundation shuts down aggressive dives.');
+      }
+
+      if (hasSpaceMakerOrTank) {
+        strengths.push('Space Maker / Dive secured: Denies enemy free Thrower / Sniper abuse.');
       }
 
       // Space Maker Vulnerability: ONLY applies to the First-Pick Team (who is vulnerable to enemy 6th pick)
@@ -110,6 +118,39 @@ export class DraftEngine {
       }
     }
 
+    // Determine Recommended Next Archetypes & Summary
+    if (brawlers.length === 0) {
+      recommendedRoles.push('ANTI_TANK', 'CONTROL');
+      compSummary = 'First Pick: Secure an Anti-Tank foundation or top S-Tier Mid controller.';
+    } else if (brawlers.length === 1) {
+      if (hasAntiTank) {
+        recommendedRoles.push('SPACE_MAKER', 'CONTROL', 'TANK');
+        compSummary = 'Solid Anti-Tank base. Next: Add a Space Maker dive or Area Controller.';
+      } else if (hasSpaceMakerOrTank) {
+        recommendedRoles.push('ANTI_TANK', 'SUPPORT', 'CONTROL');
+        compSummary = 'Aggressive dive opener. Next: Add Anti-Tank stabilization or Support.';
+      } else {
+        recommendedRoles.push('ANTI_TANK', 'SPACE_MAKER');
+        compSummary = 'Mid-range start. Next: Secure Anti-Tank or Space Maker.';
+      }
+    } else if (brawlers.length === 2) {
+      if (hasAntiTank && hasSpaceMakerOrTank) {
+        recommendedRoles.push('CONTROL', 'TANK', 'ANTI_TANK', 'SUPPORT');
+        compSummary = 'Balanced Foundation (Anti-Tank + Space Maker). Next: Round out with Area Control or Tank stat-check.';
+      } else if (!hasSpaceMakerOrTank) {
+        recommendedRoles.push('SPACE_MAKER', 'TANK');
+        compSummary = 'Missing Dive Threat. Next: Space Maker mandatory to lock out enemy 6th pick throwers.';
+      } else if (!hasAntiTank) {
+        recommendedRoles.push('ANTI_TANK');
+        compSummary = 'Vulnerable to Tanks. Next: Anti-Tank mandatory.';
+      } else {
+        recommendedRoles.push('CONTROL', 'TANK');
+        compSummary = 'Next: Add Zone Control or frontline durability.';
+      }
+    } else {
+      compSummary = 'Full 3v3 team drafted.';
+    }
+
     return {
       hasAntiTank,
       hasSpaceMakerOrTank,
@@ -121,6 +162,8 @@ export class DraftEngine {
       archetypeCounts,
       vulnerabilities,
       strengths,
+      recommendedRoles,
+      compSummary,
     };
   }
 
