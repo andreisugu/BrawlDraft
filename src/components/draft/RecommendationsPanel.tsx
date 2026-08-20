@@ -16,6 +16,10 @@ import {
   Trophy,
   Swords,
   Compass,
+  ArrowLeftRight,
+  Crosshair,
+  Eye,
+  Users,
 } from 'lucide-react';
 
 interface Props {
@@ -56,6 +60,7 @@ export const RecommendationsPanel: React.FC<Props> = ({
 
   // Intelligent Lane Allocations preventing suicide matchups
   const optimalLanes = isComplete ? DraftEngine.calculateOptimalLanes(allyBrawlers, enemyBrawlers) : [];
+  const macroPlaybook = isComplete ? DraftEngine.generateMacroPlaybook(allyBrawlers, enemyBrawlers, optimalLanes) : null;
 
   // Current turn side
   const currentPickingSide = getPickTeamForSlot(session.currentSlot);
@@ -229,6 +234,79 @@ export const RecommendationsPanel: React.FC<Props> = ({
               </div>
             </div>
           </div>
+
+          {/* Pro Positioning & In-Game Macro Playbook */}
+          {macroPlaybook && (
+            <div className="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 border border-yellow-500/30 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xl">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-800">
+                <Brain className="w-5 h-5 text-yellow-400" />
+                <h3 className="font-brawl text-lg text-yellow-400 tracking-wide">
+                  PRO POSITIONING & IN-GAME MACRO PLAYBOOK
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Priority Pinch Target */}
+                {macroPlaybook.priorityPinchTarget && (
+                  <div className="bg-rose-950/20 border border-rose-500/30 rounded-xl p-3.5 space-y-2">
+                    <div className="flex items-center gap-2 text-rose-300 font-brawl text-sm">
+                      <Crosshair className="w-4 h-4 text-rose-400" />
+                      <span>PRIORITY PINCH TARGET: {macroPlaybook.priorityPinchTarget.target.name.toUpperCase()}</span>
+                    </div>
+                    <p className="text-xs text-gray-300 leading-relaxed">
+                      <strong className="text-rose-300">Why: </strong>{macroPlaybook.priorityPinchTarget.reason}
+                    </p>
+                    <p className="text-xs text-yellow-300/90 leading-relaxed bg-black/40 p-2 rounded-lg border border-yellow-500/20">
+                      💡 <strong>Pinch Tactic: </strong>{macroPlaybook.priorityPinchTarget.pinchInstructions}
+                    </p>
+                  </div>
+                )}
+
+                {/* 2. Dynamic Lane Switching */}
+                <div className="bg-blue-950/20 border border-blue-500/30 rounded-xl p-3.5 space-y-2">
+                  <div className="flex items-center gap-2 text-blue-300 font-brawl text-sm">
+                    <ArrowLeftRight className="w-4 h-4 text-blue-400" />
+                    <span>DYNAMIC LANE SWITCHING RULES</span>
+                  </div>
+                  <div className="space-y-1.5 text-xs text-gray-300">
+                    {macroPlaybook.laneSwitchingRules.map((rule, idx) => (
+                      <div key={idx} className="flex items-start gap-1.5">
+                        <span className="text-blue-400 font-bold">↳</span>
+                        <span>{rule}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Cooldown & Ability Tracking */}
+                <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-3.5 space-y-2">
+                  <div className="flex items-center gap-2 text-amber-300 font-brawl text-sm">
+                    <Eye className="w-4 h-4 text-amber-400" />
+                    <span>ENEMY COOLDOWN & ABILITY TRACKING</span>
+                  </div>
+                  <div className="space-y-1.5 text-xs text-gray-300">
+                    {macroPlaybook.cooldownTracking.map((rule, idx) => (
+                      <div key={idx} className="flex items-start gap-1.5">
+                        <span className="text-amber-400 font-bold">•</span>
+                        <span>{rule}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. 3-Man Line Movement & Resetting */}
+                <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-3.5 space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-300 font-brawl text-sm">
+                    <Users className="w-4 h-4 text-emerald-400" />
+                    <span>3-MAN LINE MOVEMENT & RESETTING</span>
+                  </div>
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    {macroPlaybook.teamMovementRule}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -20,6 +20,7 @@ export interface Brawler {
   counters: string[]; // List of archetypes or brawlers countered
   counteredBy: string[]; // List of archetypes or brawlers this is weak into
   synergies: string[]; // Synergistic archetype or brawlers
+  positionPreference?: 'MID' | 'LANE' | 'HYBRID';
   description?: string;
   bobbyTip?: string;
 }

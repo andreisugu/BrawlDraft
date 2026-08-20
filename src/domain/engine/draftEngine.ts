@@ -760,6 +760,88 @@ export class DraftEngine {
 
     return matchups;
   }
+
+  /**
+   * Generates a comprehensive in-game Macro & Positioning Playbook
+   * based on the 14 fundamental positioning laws (Pinching, Lane Switching, Line Movement, Ability Tracking).
+   */
+  public static generateMacroPlaybook(
+    allyBrawlers: Brawler[],
+    enemyBrawlers: Brawler[],
+    laneMatchups: LaneMatchup[]
+  ): MacroPlaybook {
+    // 1. Identify Priority Pinch Target (Throwers on closed maps, Snipers on open maps, or Assassin threats)
+    let priorityTarget: Brawler | null = null;
+    let pinchReason = '';
+    let pinchInstructions = '';
+
+    const enemyThrower = enemyBrawlers.find(b => b.archetype === 'THROWER');
+    const enemySniper = enemyBrawlers.find(b => b.archetype === 'SNIPER' && b.tier === 'S');
+    const enemyAssassin = enemyBrawlers.find(b => b.id === 'edgar' || b.id === 'mortis' || b.id === 'mico' || b.id === 'kenji' || b.id === 'lily' || b.id === 'bolt');
+
+    if (enemyThrower) {
+      priorityTarget = enemyThrower;
+      pinchReason = `${enemyThrower.name} creates oppressive indirect pressure behind walls. If left alone, your team gets spawn-trapped.`;
+      pinchInstructions = `Win your side lane, then immediately rotate inward to 2v1 pinch ${enemyThrower.name} from two separate angles. Shooting from two directions denies their wall cover.`;
+    } else if (enemySniper) {
+      priorityTarget = enemySniper;
+      pinchReason = `${enemySniper.name} locks down long sightlines.`;
+      pinchInstructions = `Collapse with your Space Maker or rotate from side lanes to pinch ${enemySniper.name} before they charge Super.`;
+    } else if (enemyAssassin) {
+      priorityTarget = enemyAssassin;
+      pinchReason = `${enemyAssassin.name} looks for isolated targets to charge Super and start a snowball.`;
+      pinchInstructions = `Maintain visual on bushes. When ${enemyAssassin.name} dives, both nearby teammates must immediately pinch and burst them down.`;
+    } else if (enemyBrawlers.length > 0) {
+      priorityTarget = enemyBrawlers[0];
+      pinchReason = `Primary enemy anchor on this map.`;
+      pinchInstructions = `Coordinate with your teammates to pinch from two angles once you push your individual lane.`;
+    }
+
+    // 2. Lane Switching Rules (Pre-Match & Dynamic Swapping)
+    const laneSwitchingRules: string[] = [];
+    laneMatchups.forEach(m => {
+      if (m.advantage === 'ALLY_FAVORED') {
+        laneSwitchingRules.push(`Keep your lane against ${m.enemy.name}. If ${m.enemy.name} tries to swap lanes to escape ${m.ally.name}, ${m.ally.name} must swap with them to maintain counter pressure.`);
+      } else if (m.advantage === 'ENEMY_FAVORED') {
+        laneSwitchingRules.push(`If ${m.ally.name} is struggling against ${m.enemy.name}, swap lanes immediately with a teammate who has knockback or range advantage.`);
+      }
+    });
+
+    // 3. Cooldown & Ability Tracking
+    const cooldownTracking: string[] = [];
+    enemyBrawlers.forEach(enemy => {
+      if (enemy.id === 'edgar') {
+        cooldownTracking.push(`Track Edgar's Super & Hardcore Shield. Once he lands and burns shield, he has 0 escape—punish immediately.`);
+      } else if (enemy.id === 'dynamike') {
+        cooldownTracking.push(`Bait Satchel Charge stun gadget before committing your close-range dive into Dynamike.`);
+      } else if (enemy.id === 'crow') {
+        cooldownTracking.push(`Track Crow's Slowing Toxin gadget & Super jump. Don't clump together in narrow corridors.`);
+      } else if (enemy.id === 'piper') {
+        cooldownTracking.push(`Track Piper's Auto Aimer knockback gadget & Super escape. Once burned, she is helpless at close range.`);
+      } else if (enemy.id === 'gene') {
+        cooldownTracking.push(`Count Gene's Super charge. Dodge wide when Gene has Magic Hand ready.`);
+      } else if (enemy.hasHypercharge) {
+        cooldownTracking.push(`Watch for ${enemy.name}'s purple Hypercharge aura. Fall back and kite when activated; do not feed ammo.`);
+      }
+    });
+
+    // 4. Team Movement Rule (The 3-Man Line)
+    const allyDivers = allyBrawlers.filter(b => b.archetype === 'SPACE_MAKER');
+    const teamMovementRule = allyDivers.length > 0
+      ? `Hold a solid mid line. When ${allyDivers.map(d => d.name).join('/')} initiates a dive onto the enemy, your backline must push up immediately to trade and support, never letting divers fight 1v3.`
+      : `Push forward as a 3-man line when enemies are low. Never 1v3 into enemy spawn. If an ally falls, fall back immediately and hold your side of the mid chokepoints until your team regroups.`;
+
+    return {
+      priorityPinchTarget: priorityTarget ? {
+        target: priorityTarget,
+        reason: pinchReason,
+        pinchInstructions,
+      } : null,
+      laneSwitchingRules: laneSwitchingRules.slice(0, 3),
+      cooldownTracking: cooldownTracking.slice(0, 3),
+      teamMovementRule,
+    };
+  }
 }
 
 export interface LaneMatchup {
@@ -768,4 +850,15 @@ export interface LaneMatchup {
   enemy: Brawler;
   advantage: 'ALLY_FAVORED' | 'ENEMY_FAVORED' | 'EVEN';
   tip: string;
+}
+
+export interface MacroPlaybook {
+  priorityPinchTarget: {
+    target: Brawler;
+    reason: string;
+    pinchInstructions: string;
+  } | null;
+  laneSwitchingRules: string[];
+  cooldownTracking: string[];
+  teamMovementRule: string;
 }
