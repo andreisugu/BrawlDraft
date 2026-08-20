@@ -441,9 +441,12 @@ export class DraftEngine {
 
     // Deduction 9: Mode Objectives
     if (session.map.mode === 'HEIST') {
+      const heistTargets: BrawlerArchetype[] = allyComp.hasSpaceMakerOrTank
+        ? ['THROWER', 'CONTROL', 'ANTI_TANK']
+        : ['THROWER', 'ANTI_TANK', 'CONTROL', 'SPACE_MAKER'];
       deductions.push({
         id: 'heist_objective',
-        targetArchetypes: ['THROWER', 'ANTI_TANK', 'CONTROL', 'SPACE_MAKER'],
+        targetArchetypes: heistTargets,
         title: 'Heist Objective: Safe Shredding & Race Damage',
         reason: 'Heist requires safe burst and wall control (Chuck, Berry, Dynamike, Clancy, Colt, Bull, Crow). If facing a Chuck, do not try to defend—race and out-damage on the opposite safe!',
         priority: 'MEDIUM',
@@ -635,6 +638,18 @@ export class DraftEngine {
           score += 10;
         }
       });
+
+      // Avoid duplicate Space Makers when team already has one
+      if (brawler.archetype === 'SPACE_MAKER' && allyBrawlers.some(a => a.archetype === 'SPACE_MAKER')) {
+        score -= 30; // Heavy penalty: Team already has dive threat, avoid stacking duplicate space makers
+      }
+
+      // Special Heist Safe Melter boost
+      if (session.map.mode === 'HEIST') {
+        if (brawler.id === 'chuck' || brawler.id === 'berry' || brawler.id === 'dynamike' || brawler.id === 'sirius' || brawler.id === 'clancy' || brawler.id === 'colt' || brawler.id === 'crow' || brawler.id === 'lumi' || brawler.id === 'barley') {
+          score += 20; // Top competitive safe melter bonus on Heist
+        }
+      }
 
       // 4. Special Slot-specific rules
       if (session.currentSlot === 1) {
