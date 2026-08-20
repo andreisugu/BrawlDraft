@@ -156,22 +156,36 @@ export class DraftEngine {
       });
     }
 
-    // Deduction 3: Space Maker Lockout / Squishy Punish
-    const enemySquishies = enemyBrawlers.filter(
-      e => e.archetype === 'SNIPER' || e.archetype === 'THROWER' || (e.archetype === 'CONTROL' && e.burstDamage <= 6)
-    );
-    if (enemySquishies.length >= 1 || (enemyComp.burstRating < 65 && enemyBrawlers.length >= 1)) {
+    // Deduction 3: Space Maker Lockout (Ally lacks Space Maker in Slot 4/5 before enemy last pick)
+    if ((session.currentSlot === 4 || session.currentSlot === 5) && !allyComp.hasSpaceMakerOrTank) {
       deductions.push({
-        id: 'spacemaker_punish',
+        id: 'spacemaker_lockout',
         targetArchetypes: ['SPACE_MAKER'],
-        title: 'Space Maker Deduction: Punish Low DPS & Deny Throwers',
-        reason: `Enemy drafted ${enemySquishies.length} squishy/low-burst brawlers. A Space Maker closes distance with dashes/jumps, forces 2+ enemies to peel, and locks out enemy free throwers.`,
-        priority: 'HIGH',
+        title: 'Space Maker Lockout: Deny Enemy Free Last Pick',
+        reason: 'Your team currently has NO Space Maker or aggressive dive threat. In Slot 4/5, you MUST draft a Space Maker (Kenji, Kaze, Ollie, Bull, Mortis, Lily, Shade) to prevent the enemy from having a free, uncontested 6th pick Thrower or Sniper.',
+        priority: 'CRITICAL',
         icon: '✨',
       });
     }
 
-    // Deduction 4: Tank Stat-Check ("Being Bigger")
+    // Deduction 4: Space Maker Exploitation (Enemy Squishies / Low DPS)
+    const enemySquishies = enemyBrawlers.filter(
+      e => e.archetype === 'SNIPER' || e.archetype === 'THROWER' || (e.archetype === 'CONTROL' && e.burstDamage <= 6)
+    );
+    if (enemySquishies.length >= 1 || (enemyComp.burstRating < 65 && enemyBrawlers.length >= 1)) {
+      if (!deductions.some(d => d.id === 'spacemaker_lockout')) {
+        deductions.push({
+          id: 'spacemaker_punish',
+          targetArchetypes: ['SPACE_MAKER'],
+          title: 'Space Maker Deduction: Punish Low DPS & Dive Squishies',
+          reason: `Enemy drafted ${enemySquishies.length} squishy/low-burst brawlers. A Space Maker closes distance with dashes/jumps, forces 2+ enemies to peel, and locks out enemy free throwers.`,
+          priority: 'HIGH',
+          icon: '✨',
+        });
+      }
+    }
+
+    // Deduction 5: Tank Stat-Check ("Being Bigger")
     if (enemyComp.archetypeCounts.SPACE_MAKER > 0 && enemyComp.archetypeCounts.ANTI_TANK === 0) {
       deductions.push({
         id: 'tank_stat_check',
@@ -183,7 +197,7 @@ export class DraftEngine {
       });
     }
 
-    // Deduction 5: 6th Pick Free Thrower Win Condition
+    // Deduction 6: 6th Pick Free Thrower Win Condition (Uncontested)
     if (session.currentSlot === 6 && enemyComp.archetypeCounts.SPACE_MAKER === 0 && enemyBrawlers.length === 3) {
       deductions.push({
         id: 'free_thrower_win',
@@ -195,7 +209,7 @@ export class DraftEngine {
       });
     }
 
-    // Deduction 6: Immortal Tank Enabler (Ally Tank + Enemy lacks Heavy Tank Shredders)
+    // Deduction 7: Immortal Tank Enabler (Ally Tank + Enemy lacks Heavy Tank Shredders)
     const heavyTankShredders = ['colette', 'chester', 'clancy', 'crow', 'otis'];
     const enemyHasHeavyShredder = enemyBrawlers.some(e => heavyTankShredders.includes(e.id));
     if (allyComp.archetypeCounts.TANK > 0 && !enemyHasHeavyShredder && enemyBrawlers.length >= 2) {
@@ -209,7 +223,7 @@ export class DraftEngine {
       });
     }
 
-    // Deduction 7: Resilient Snipers / Flex 2/3 in Passive Meta
+    // Deduction 8: Resilient Snipers / Flex 2/3 in Passive Meta
     if (macroMeta === 'PASSIVE' && (session.currentSlot === 2 || session.currentSlot === 3)) {
       deductions.push({
         id: 'resilient_snipers',
@@ -221,7 +235,7 @@ export class DraftEngine {
       });
     }
 
-    // Deduction 8: Mode Objectives
+    // Deduction 9: Mode Objectives
     if (session.map.mode === 'HEIST') {
       deductions.push({
         id: 'heist_objective',
@@ -426,6 +440,11 @@ export class DraftEngine {
         } else if (brawler.archetype === 'THROWER' && brawler.id !== 'willow') {
           score -= 40;
           riskWarning = `First-picking Throwers is an instant loss against pro space makers.`;
+        }
+      } else if (session.currentSlot === 4 || session.currentSlot === 5) {
+        if (brawler.archetype === 'THROWER' && brawler.id !== 'willow' && brawler.id !== 'berry') {
+          score -= 35;
+          riskWarning = `Drafting Throwers before enemy 6th pick allows opponent to hard counter with a Space Maker.`;
         }
       }
 
