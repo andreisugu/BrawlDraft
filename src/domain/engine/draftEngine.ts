@@ -46,9 +46,12 @@ export interface CompEvaluation {
 
 export class DraftEngine {
   /**
-   * Evaluates team composition breakdown and metrics
+   * Evaluates team composition breakdown and metrics with draft context
    */
-  public static evaluateComp(brawlers: Brawler[]): CompEvaluation {
+  public static evaluateComp(
+    brawlers: Brawler[],
+    context?: { isFirstPickTeam?: boolean; currentSlot?: number; isAlly?: boolean }
+  ): CompEvaluation {
     const archetypeCounts: Record<BrawlerArchetype, number> = {
       ANTI_TANK: 0,
       SPACE_MAKER: 0,
@@ -85,19 +88,25 @@ export class DraftEngine {
     const vulnerabilities: string[] = [];
     const strengths: string[] = [];
 
-    if (brawlers.length >= 1) {
+    const isFirstPickTeam = context?.isFirstPickTeam ?? true;
+    const currentSlot = context?.currentSlot ?? 1;
+
+    if (brawlers.length >= 1 || currentSlot >= 4) {
       if (!hasAntiTank) {
-        vulnerabilities.push('No Anti-Tank: Vulnerable to being ran down by aggressive Tanks and Space Makers.');
+        vulnerabilities.push('No Anti-Tank: Vulnerable to aggressive Tanks and Space Makers.');
       } else {
-        strengths.push('Solid Anti-Tank foundation shuts down aggressive dives.');
+        strengths.push('Solid Anti-Tank foundation.');
       }
 
-      if (!hasSpaceMakerOrTank && brawlers.length >= 2) {
+      // Space Maker Vulnerability: ONLY applies to the First-Pick Team (who is vulnerable to enemy 6th pick)
+      if (isFirstPickTeam && !hasSpaceMakerOrTank && currentSlot >= 4) {
         vulnerabilities.push('No Space Maker: Leaves your team open to free enemy last-pick Throwers/Snipers.');
+      } else if (!isFirstPickTeam && !hasSpaceMakerOrTank && brawlers.length >= 2) {
+        vulnerabilities.push('Low Aggro Threat: May struggle to dive and pressure long-range backliners.');
       }
 
       if (!hasDamageDealer && brawlers.length >= 2) {
-        vulnerabilities.push('Low Burst Damage: High-HP Tanks (Draco/Frank) can stat-check and walk through your team.');
+        vulnerabilities.push('Low Burst DPS: High-HP Tanks can stat-check and walk through your team.');
       }
     }
 

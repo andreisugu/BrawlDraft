@@ -27,8 +27,16 @@ export const DraftBoard: React.FC<Props> = ({
   const allyBrawlers = session.picks[allySideKey].map(id => BRAWLER_MAP[id]).filter(Boolean);
   const enemyBrawlers = session.picks[enemySideKey].map(id => BRAWLER_MAP[id]).filter(Boolean);
 
-  const allyAnalysis = DraftEngine.evaluateComp(allyBrawlers);
-  const enemyAnalysis = DraftEngine.evaluateComp(enemyBrawlers);
+  const allyAnalysis = DraftEngine.evaluateComp(allyBrawlers, {
+    isFirstPickTeam: isAllyTeamA,
+    currentSlot: session.currentSlot,
+    isAlly: true,
+  });
+  const enemyAnalysis = DraftEngine.evaluateComp(enemyBrawlers, {
+    isFirstPickTeam: !isAllyTeamA,
+    currentSlot: session.currentSlot,
+    isAlly: false,
+  });
 
   const currentPickingTeam = getPickTeamForSlot(session.currentSlot);
   const isCurrentAllyTurn = currentPickingTeam === session.userSide;
@@ -153,6 +161,7 @@ export const DraftBoard: React.FC<Props> = ({
                     <BrawlerAvatar
                       brawler={brawler}
                       size="sm"
+                      emptyLabel="Ban"
                       showArchetype={false}
                       selected={isSelected}
                       onClick={() => onSlotSelect({ type: 'BAN', side: allySideKey, index: idx })}
@@ -293,6 +302,7 @@ export const DraftBoard: React.FC<Props> = ({
                     <BrawlerAvatar
                       brawler={brawler}
                       size="sm"
+                      emptyLabel="Ban"
                       showArchetype={false}
                       selected={isSelected}
                       onClick={() => onSlotSelect({ type: 'BAN', side: enemySideKey, index: idx })}

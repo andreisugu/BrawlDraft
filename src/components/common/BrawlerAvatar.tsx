@@ -6,6 +6,7 @@ import { Shield, Zap, Crosshair, Target, Heart, Bomb, Sparkles, HelpCircle } fro
 interface Props {
   brawler?: Brawler;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  emptyLabel?: string;
   showArchetype?: boolean;
   showBobbyColor?: boolean;
   selected?: boolean;
@@ -45,6 +46,7 @@ export const ARCHETYPE_ICONS: Record<BrawlerArchetype, React.ReactNode> = {
 export const BrawlerAvatar: React.FC<Props> = ({
   brawler,
   size = 'md',
+  emptyLabel,
   showArchetype = true,
   showBobbyColor = true,
   selected = false,
@@ -66,8 +68,8 @@ export const BrawlerAvatar: React.FC<Props> = ({
         onClick={disabled ? undefined : onClick}
         className={`${emptyDimensions} rounded-2xl border-2 border-dashed border-gray-700 bg-gray-900/50 flex flex-col items-center justify-center text-gray-500 hover:border-yellow-400/60 transition-colors cursor-pointer`}
       >
-        <HelpCircle className="w-5 h-5 opacity-40" />
-        <span className="text-[9px] uppercase font-bold mt-0.5 opacity-60">Pick</span>
+        <HelpCircle className="w-4 h-4 opacity-40" />
+        {emptyLabel && <span className="text-[9px] uppercase font-bold mt-0.5 opacity-60">{emptyLabel}</span>}
       </div>
     );
   }
