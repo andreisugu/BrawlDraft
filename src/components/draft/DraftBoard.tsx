@@ -285,25 +285,39 @@ export const DraftBoard: React.FC<Props> = ({
               </div>
             ))}
 
-            {/* Recommended Next Roles (Click to Filter) */}
+            {/* Recommended Next Roles (Ranked from Most Needed to Least Needed) */}
             {allyAnalysis.recommendedRoles.length > 0 && (
               <div className="pt-1.5 border-t border-gray-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-300">
                   <Target className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
-                  <span>Ideal Next:</span>
+                  <span>Ideal Next (Ranked):</span>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {allyAnalysis.recommendedRoles.map(role => (
-                    <button
-                      key={role}
-                      onClick={() => onFilterArchetype?.(role)}
-                      title={`Click to filter by ${role.replace('_', ' ')}`}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-900/40 hover:bg-blue-600/50 hover:scale-105 border border-blue-500/40 text-[10px] font-black uppercase text-blue-200 transition-all cursor-pointer shadow-sm active:scale-95"
-                    >
-                      {ARCHETYPE_ICONS[role]}
-                      <span>{role.replace('_', ' ')}</span>
-                    </button>
-                  ))}
+                  {allyAnalysis.recommendedRoles.map((role, idx) => {
+                    const needInfo = allyAnalysis.rankedNeeds?.[idx];
+                    const isTopPriority = idx === 0;
+
+                    return (
+                      <button
+                        key={role}
+                        onClick={() => onFilterArchetype?.(role)}
+                        title={needInfo?.reason || `Priority #${idx + 1}: ${role.replace('_', ' ')}`}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black uppercase transition-all cursor-pointer shadow-sm active:scale-95 ${
+                          isTopPriority
+                            ? 'bg-amber-400/20 text-amber-300 border-amber-400/60 shadow-amber-400/20 shadow-md ring-1 ring-amber-400/40 hover:bg-amber-400/30 hover:scale-105'
+                            : idx === 1
+                            ? 'bg-blue-900/40 text-blue-200 border-blue-500/40 hover:bg-blue-600/50 hover:scale-105'
+                            : 'bg-gray-800/40 text-gray-300 border-gray-700 hover:bg-gray-700 hover:scale-105'
+                        }`}
+                      >
+                        <span className={`text-[8px] font-mono px-1 rounded ${isTopPriority ? 'bg-amber-400 text-black font-bold' : 'bg-gray-950 text-gray-400'}`}>
+                          #{idx + 1}
+                        </span>
+                        {ARCHETYPE_ICONS[role]}
+                        <span>{role.replace('_', ' ')}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -507,25 +521,39 @@ export const DraftBoard: React.FC<Props> = ({
               </div>
             ))}
 
-            {/* Enemy Recommended Roles (Click to Filter) */}
+            {/* Enemy Recommended Roles (Ranked) */}
             {enemyAnalysis.recommendedRoles.length > 0 && (
               <div className="pt-1.5 border-t border-gray-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-red-300">
                   <Target className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
-                  <span>Ideal Next:</span>
+                  <span>Ideal Next (Ranked):</span>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {enemyAnalysis.recommendedRoles.map(role => (
-                    <button
-                      key={role}
-                      onClick={() => onFilterArchetype?.(role)}
-                      title={`Click to filter by ${role.replace('_', ' ')}`}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-900/40 hover:bg-red-600/50 hover:scale-105 border border-red-500/40 text-[10px] font-black uppercase text-red-200 transition-all cursor-pointer shadow-sm active:scale-95"
-                    >
-                      {ARCHETYPE_ICONS[role]}
-                      <span>{role.replace('_', ' ')}</span>
-                    </button>
-                  ))}
+                  {enemyAnalysis.recommendedRoles.map((role, idx) => {
+                    const needInfo = enemyAnalysis.rankedNeeds?.[idx];
+                    const isTopPriority = idx === 0;
+
+                    return (
+                      <button
+                        key={role}
+                        onClick={() => onFilterArchetype?.(role)}
+                        title={needInfo?.reason || `Priority #${idx + 1}: ${role.replace('_', ' ')}`}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black uppercase transition-all cursor-pointer shadow-sm active:scale-95 ${
+                          isTopPriority
+                            ? 'bg-rose-950/60 text-rose-300 border-rose-500/60 shadow-rose-500/20 shadow-md ring-1 ring-rose-500/40 hover:bg-rose-900/60 hover:scale-105'
+                            : idx === 1
+                            ? 'bg-red-900/40 text-red-200 border-red-500/40 hover:bg-red-600/50 hover:scale-105'
+                            : 'bg-gray-800/40 text-gray-300 border-gray-700 hover:bg-gray-700 hover:scale-105'
+                        }`}
+                      >
+                        <span className={`text-[8px] font-mono px-1 rounded ${isTopPriority ? 'bg-rose-500 text-white font-bold' : 'bg-gray-950 text-gray-400'}`}>
+                          #{idx + 1}
+                        </span>
+                        {ARCHETYPE_ICONS[role]}
+                        <span>{role.replace('_', ' ')}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

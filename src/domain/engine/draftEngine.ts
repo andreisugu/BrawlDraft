@@ -31,6 +31,12 @@ export interface PickRecommendation {
   riskWarning?: string;
 }
 
+export interface RankedArchetypeNeed {
+  role: BrawlerArchetype;
+  priority: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+  reason: string;
+}
+
 export interface CompEvaluation {
   hasAntiTank: boolean;
   hasSpaceMakerOrTank: boolean;
@@ -43,6 +49,7 @@ export interface CompEvaluation {
   vulnerabilities: string[];
   strengths: string[];
   recommendedRoles: BrawlerArchetype[];
+  rankedNeeds?: RankedArchetypeNeed[];
   predictedEnemyNext?: {
     predictedRoles: BrawlerArchetype[];
     counterRoles: BrawlerArchetype[];
@@ -104,7 +111,6 @@ export class DraftEngine {
 
     const vulnerabilities: string[] = [];
     const strengths: string[] = [];
-    const recommendedRoles: BrawlerArchetype[] = [];
     let predictedEnemyNext: CompEvaluation['predictedEnemyNext'] = undefined;
     let compSummary = '';
 
@@ -136,23 +142,72 @@ export class DraftEngine {
       }
     }
 
+    // -------------------------------------------------------------
+    // Dynamic Role Priority Scoring (Ranked from Most to Least Needed)
+    // -------------------------------------------------------------
+    const roleScores: Record<BrawlerArchetype, { score: number; priority: 'CRITICAL' | 'HIGH' | 'MEDIUM'; reason: string }> = {
+      ANTI_TANK: { score: 0, priority: 'MEDIUM', reason: 'Anti-Tank stabilization' },
+      SPACE_MAKER: { score: 0, priority: 'MEDIUM', reason: 'Aggressive dive & flanking pressure' },
+      CONTROL: { score: 0, priority: 'MEDIUM', reason: 'Area denial and lane lockdown' },
+      THROWER: { score: 0, priority: 'MEDIUM', reason: 'Indirect wall artillery' },
+      SNIPER: { score: 0, priority: 'MEDIUM', reason: 'Long-range anchor damage' },
+      TANK: { score: 0, priority: 'MEDIUM', reason: 'Frontline HP and pressure' },
+      SUPPORT: { score: 0, priority: 'MEDIUM', reason: 'Team healing and speed sustain' },
+    };
+
     if (brawlers.length === 0) {
-      recommendedRoles.push('ANTI_TANK', 'CONTROL');
+      if (context?.mode === 'BOUNTY' || context?.mode === 'KNOCKOUT') {
+        roleScores.SNIPER = { score: 95, priority: 'CRITICAL', reason: '1st Priority: S-tier Sniper anchor on long-range map' };
+        roleScores.ANTI_TANK = { score: 80, priority: 'HIGH', reason: '2nd Priority: Anti-Dive insurance' };
+        roleScores.CONTROL = { score: 70, priority: 'HIGH', reason: '3rd Priority: Vision & range control' };
+      } else {
+        roleScores.ANTI_TANK = { score: 100, priority: 'CRITICAL', reason: '1st Priority: Secure an Anti-Tank foundation to deny enemy aggro' };
+        roleScores.CONTROL = { score: 80, priority: 'HIGH', reason: '2nd Priority: Top S-Tier Mid controller' };
+      }
       compSummary = 'First Pick: Secure an Anti-Tank foundation or top S-Tier Mid controller.';
     } else if (brawlers.length === 1) {
       if (hasAntiTank) {
-        recommendedRoles.push('SPACE_MAKER', 'CONTROL', 'TANK');
+        roleScores.SPACE_MAKER = { score: 95, priority: 'CRITICAL', reason: '1st Priority: Space Maker dive completes the Anti-Tank core' };
+        if (context?.mode === 'HEIST') {
+          roleScores.THROWER = { score: 85, priority: 'HIGH', reason: '2nd Priority: High safe damage artillery over walls' };
+          roleScores.CONTROL = { score: 75, priority: 'HIGH', reason: '3rd Priority: Choke point defense' };
+          roleScores.TANK = { score: 60, priority: 'MEDIUM', reason: '4th Priority: Heavy safe rush pressure' };
+        } else {
+          roleScores.CONTROL = { score: 80, priority: 'HIGH', reason: '2nd Priority: Mid zone lockdown' };
+          roleScores.TANK = { score: 65, priority: 'MEDIUM', reason: '3rd Priority: Frontline HP presence' };
+          roleScores.SUPPORT = { score: 55, priority: 'MEDIUM', reason: '4th Priority: Team sustain' };
+        }
         compSummary = 'Solid Anti-Tank base. Next: Add a Space Maker dive or Area Controller.';
       } else if (hasSpaceMakerOrTank) {
-        recommendedRoles.push('ANTI_TANK', 'SUPPORT', 'CONTROL');
+        roleScores.ANTI_TANK = { score: 100, priority: 'CRITICAL', reason: '1st Priority: Mandatory Anti-Tank backbone to stabilize your dive' };
+        roleScores.SUPPORT = { score: 75, priority: 'HIGH', reason: '2nd Priority: Team speed / shield sustain' };
+        roleScores.CONTROL = { score: 65, priority: 'MEDIUM', reason: '3rd Priority: Area denial' };
         compSummary = 'Aggressive dive opener. Next: Add Anti-Tank stabilization or Support.';
       } else {
-        recommendedRoles.push('ANTI_TANK', 'SPACE_MAKER');
+        roleScores.ANTI_TANK = { score: 95, priority: 'CRITICAL', reason: '1st Priority: Anti-Tank backbone' };
+        roleScores.SPACE_MAKER = { score: 85, priority: 'HIGH', reason: '2nd Priority: Space Maker dive threat' };
         compSummary = 'Mid-range start. Next: Secure Anti-Tank or Space Maker.';
       }
     } else if (brawlers.length === 2) {
       if (hasAntiTank && hasSpaceMakerOrTank) {
-        recommendedRoles.push('CONTROL', 'ANTI_TANK', 'TANK', 'SUPPORT');
+        if (context?.mode === 'HEIST') {
+          roleScores.THROWER = { score: 95, priority: 'HIGH', reason: '1st Priority: Top safe melters (Chuck, Berry, Dynamike)' };
+          roleScores.CONTROL = { score: 85, priority: 'HIGH', reason: '2nd Priority: Area denial and wall control' };
+          roleScores.ANTI_TANK = { score: 70, priority: 'MEDIUM', reason: '3rd Priority: Additional burst shred' };
+          roleScores.SUPPORT = { score: 55, priority: 'MEDIUM', reason: '4th Priority: Team sustain' };
+        } else if (context?.mode === 'HOT_ZONE') {
+          roleScores.CONTROL = { score: 95, priority: 'HIGH', reason: '1st Priority: Continuous zone lockdown (Lou, Clancy, Finx)' };
+          roleScores.ANTI_TANK = { score: 80, priority: 'HIGH', reason: '2nd Priority: Hard CC / anti-dive control' };
+          roleScores.SUPPORT = { score: 65, priority: 'MEDIUM', reason: '3rd Priority: Zone sustain' };
+        } else if (context?.mode === 'BOUNTY' || context?.mode === 'KNOCKOUT') {
+          roleScores.SNIPER = { score: 95, priority: 'HIGH', reason: '1st Priority: Resilient sniper anchor' };
+          roleScores.CONTROL = { score: 80, priority: 'HIGH', reason: '2nd Priority: Long-range area denial' };
+          roleScores.SUPPORT = { score: 65, priority: 'MEDIUM', reason: '3rd Priority: Team healing' };
+        } else {
+          roleScores.CONTROL = { score: 90, priority: 'HIGH', reason: '1st Priority: Mid control' };
+          roleScores.TANK = { score: 80, priority: 'HIGH', reason: '2nd Priority: Stat-check pressure' };
+          roleScores.SUPPORT = { score: 65, priority: 'MEDIUM', reason: '3rd Priority: Team sustain' };
+        }
         compSummary = 'Balanced Foundation (Anti-Tank + Space Maker).';
 
         if (isFirstPickTeam && currentSlot === 5) {
@@ -185,18 +240,31 @@ export class DraftEngine {
           }
         }
       } else if (!hasSpaceMakerOrTank) {
-        recommendedRoles.push('SPACE_MAKER', 'TANK');
+        roleScores.SPACE_MAKER = { score: 100, priority: 'CRITICAL', reason: '1st Priority: Space Maker mandatory to lockout enemy throwers/snipers' };
+        roleScores.TANK = { score: 70, priority: 'HIGH', reason: '2nd Priority: Frontline tank presence' };
         compSummary = 'Missing Dive Threat. Next: Space Maker mandatory to lock out enemy 6th pick throwers.';
       } else if (!hasAntiTank) {
-        recommendedRoles.push('ANTI_TANK');
+        roleScores.ANTI_TANK = { score: 100, priority: 'CRITICAL', reason: '1st Priority: Anti-Tank mandatory to stop enemy tank overrun' };
         compSummary = 'Vulnerable to Tanks. Next: Anti-Tank mandatory.';
       } else {
-        recommendedRoles.push('CONTROL', 'TANK');
+        roleScores.CONTROL = { score: 90, priority: 'HIGH', reason: '1st Priority: Mid zone control' };
+        roleScores.TANK = { score: 75, priority: 'MEDIUM', reason: '2nd Priority: Frontline HP' };
         compSummary = 'Next: Add Zone Control or frontline durability.';
       }
     } else {
       compSummary = 'Full 3v3 team drafted.';
     }
+
+    const rankedNeeds: RankedArchetypeNeed[] = Object.entries(roleScores)
+      .filter(([_, v]) => v.score > 40)
+      .sort((a, b) => b[1].score - a[1].score)
+      .map(([role, v]) => ({
+        role: role as BrawlerArchetype,
+        priority: v.priority,
+        reason: v.reason,
+      }));
+
+    const recommendedRoles: BrawlerArchetype[] = rankedNeeds.map(n => n.role);
 
     return {
       hasAntiTank,
@@ -210,6 +278,7 @@ export class DraftEngine {
       vulnerabilities,
       strengths,
       recommendedRoles,
+      rankedNeeds,
       predictedEnemyNext,
       compSummary,
     };
