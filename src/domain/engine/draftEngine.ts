@@ -1,7 +1,7 @@
 import { BRAWLERS, BRAWLER_MAP } from '../data/brawlers';
 import { Brawler } from '../models/brawler';
 import { DraftSession, getAllBannedBrawlers, getAllPickedBrawlers, getPickTeamForSlot } from '../models/draftSession';
-import { BrawlerArchetype, getMacroMeta } from '../models/types';
+import { BrawlerArchetype, GameMode, getMacroMeta } from '../models/types';
 
 export interface DraftDeduction {
   id: string;
@@ -57,7 +57,13 @@ export class DraftEngine {
    */
   public static evaluateComp(
     brawlers: Brawler[],
-    context?: { isFirstPickTeam?: boolean; currentSlot?: number; isAlly?: boolean }
+    context?: {
+      isFirstPickTeam?: boolean;
+      currentSlot?: number;
+      isAlly?: boolean;
+      enemyBrawlers?: Brawler[];
+      mode?: GameMode;
+    }
   ): CompEvaluation {
     const archetypeCounts: Record<BrawlerArchetype, number> = {
       ANTI_TANK: 0,
@@ -69,24 +75,28 @@ export class DraftEngine {
       SUPPORT: 0,
     };
 
+    let hasAntiTank = false;
+    let hasSpaceMakerOrTank = false;
+    let hasDamageDealer = false;
+    let hasSupport = false;
+
     brawlers.forEach(b => {
       archetypeCounts[b.archetype] = (archetypeCounts[b.archetype] || 0) + 1;
+      if (b.archetype === 'ANTI_TANK') hasAntiTank = true;
+      if (b.archetype === 'SPACE_MAKER' || b.archetype === 'TANK') hasSpaceMakerOrTank = true;
+      if (b.burstDamage >= 8) hasDamageDealer = true;
+      if (b.archetype === 'SUPPORT') hasSupport = true;
     });
 
-    const hasAntiTank = archetypeCounts.ANTI_TANK > 0 || brawlers.some(b => b.id === 'willow');
-    const hasSpaceMakerOrTank = archetypeCounts.SPACE_MAKER > 0 || archetypeCounts.TANK > 0;
-    const hasDamageDealer = brawlers.some(b => b.burstDamage >= 8 || b.colorTag === 'YELLOW');
-    const hasSupport = archetypeCounts.SUPPORT > 0;
+    const burstScore = brawlers.reduce((sum, b) => sum + b.burstDamage, 0);
+    const burstRating = Math.min(100, Math.round((burstScore / (Math.max(1, brawlers.length) * 10)) * 100));
 
-    const totalBurst = brawlers.reduce((sum, b) => sum + b.burstDamage, 0);
-    const burstRating = Math.min(100, Math.round((totalBurst / (Math.max(1, brawlers.length) * 10)) * 100));
-
-    const totalHp = brawlers.reduce((sum, b) => sum + b.health, 0);
-    const effectiveHpRating = Math.min(100, Math.round((totalHp / (Math.max(1, brawlers.length) * 12000)) * 100));
+    const totalHealth = brawlers.reduce((sum, b) => sum + b.health, 0);
+    const effectiveHpRating = Math.min(100, Math.round((totalHealth / (Math.max(1, brawlers.length) * 11000)) * 100));
 
     const rangeScore = brawlers.reduce((sum, b) => {
       if (b.archetype === 'SNIPER') return sum + 10;
-      if (b.archetype === 'CONTROL' || b.archetype === 'THROWER') return sum + 7;
+      if (b.archetype === 'THROWER' || b.archetype === 'CONTROL') return sum + 8;
       if (b.archetype === 'ANTI_TANK') return sum + 6;
       return sum + 3;
     }, 0);
@@ -100,6 +110,9 @@ export class DraftEngine {
 
     const isFirstPickTeam = context?.isFirstPickTeam ?? true;
     const currentSlot = context?.currentSlot ?? 1;
+    const enemyB = context?.enemyBrawlers || [];
+    const enemyHasSpace = enemyB.some(b => b.archetype === 'SPACE_MAKER' || b.archetype === 'TANK');
+    const enemyHasAntiTank = enemyB.some(b => b.archetype === 'ANTI_TANK');
 
     if (brawlers.length >= 1 || currentSlot >= 4) {
       if (!hasAntiTank) {
@@ -112,7 +125,6 @@ export class DraftEngine {
         strengths.push('Space Maker / Dive secured: Denies enemy free Thrower / Sniper abuse.');
       }
 
-      // Space Maker Vulnerability: ONLY applies to the First-Pick Team (who is vulnerable to enemy 6th pick)
       if (isFirstPickTeam && !hasSpaceMakerOrTank && currentSlot >= 4) {
         vulnerabilities.push('No Space Maker: Leaves your team open to free enemy last-pick Throwers/Snipers.');
       } else if (!isFirstPickTeam && !hasSpaceMakerOrTank && brawlers.length >= 2) {
@@ -124,7 +136,6 @@ export class DraftEngine {
       }
     }
 
-    // Determine Recommended Next Archetypes & Predicted Opponent Next Counter
     if (brawlers.length === 0) {
       recommendedRoles.push('ANTI_TANK', 'CONTROL');
       compSummary = 'First Pick: Secure an Anti-Tank foundation or top S-Tier Mid controller.';
@@ -142,13 +153,36 @@ export class DraftEngine {
     } else if (brawlers.length === 2) {
       if (hasAntiTank && hasSpaceMakerOrTank) {
         recommendedRoles.push('CONTROL', 'ANTI_TANK', 'TANK', 'SUPPORT');
-        compSummary = 'Balanced Foundation (Anti-Tank + Space Maker). Next: Preempt enemy 6th pick with Hard CC or Area Control.';
+        compSummary = 'Balanced Foundation (Anti-Tank + Space Maker).';
+
         if (isFirstPickTeam && currentSlot === 5) {
-          predictedEnemyNext = {
-            predictedRoles: ['SPACE_MAKER', 'TANK'],
-            counterRoles: ['CONTROL', 'ANTI_TANK'],
-            reason: 'Enemy lacks aggro dive. Preempt with Hard CC / Zone Lockdown (Lumi, Otis, Surge, Nori, Naija).',
-          };
+          if (!enemyHasSpace) {
+            predictedEnemyNext = {
+              predictedRoles: ['SPACE_MAKER', 'TANK'],
+              counterRoles: ['CONTROL', 'ANTI_TANK'],
+              reason: 'Enemy lacks aggro dive. Preempt with Hard CC / Zone Lockdown (Lumi, Otis, Surge, Gale, Naija).',
+            };
+          } else if (!enemyHasAntiTank) {
+            predictedEnemyNext = {
+              predictedRoles: ['ANTI_TANK', 'TANK'],
+              counterRoles: ['ANTI_TANK', 'CONTROL'],
+              reason: 'Enemy lacks Anti-Tank. Preempt with Tank Shredders (Clancy, Colette, Chester, Griff).',
+            };
+          } else {
+            if (context?.mode === 'HEIST') {
+              predictedEnemyNext = {
+                predictedRoles: ['THROWER', 'CONTROL', 'ANTI_TANK'],
+                counterRoles: ['THROWER', 'CONTROL', 'ANTI_TANK'],
+                reason: 'Both teams secured core. Lock in top Safe Melters / Wall Control (Chuck, Berry, Dynamike, Clancy, Lumi).',
+              };
+            } else {
+              predictedEnemyNext = {
+                predictedRoles: ['CONTROL', 'SUPPORT', 'TANK'],
+                counterRoles: ['CONTROL', 'SUPPORT', 'ANTI_TANK'],
+                reason: 'Both teams secured core. Lock in dominant Mid Controller / Support (Wendy, Lumi, Crow, Otis, Naija).',
+              };
+            }
+          }
         }
       } else if (!hasSpaceMakerOrTank) {
         recommendedRoles.push('SPACE_MAKER', 'TANK');
@@ -181,9 +215,6 @@ export class DraftEngine {
     };
   }
 
-  /**
-   * Generates active tactical deductions based on current draft state (Bobby's Core Deduction Rules)
-   */
   public static getDeductions(session: DraftSession): DraftDeduction[] {
     const pickingSide = getPickTeamForSlot(session.currentSlot);
     const allyPickedIds = pickingSide === 'TEAM_A' ? session.picks.teamA : session.picks.teamB;
@@ -192,13 +223,12 @@ export class DraftEngine {
     const allyBrawlers = allyPickedIds.map(id => BRAWLER_MAP[id]).filter(Boolean);
     const enemyBrawlers = enemyPickedIds.map(id => BRAWLER_MAP[id]).filter(Boolean);
 
-    const allyComp = this.evaluateComp(allyBrawlers);
-    const enemyComp = this.evaluateComp(enemyBrawlers);
+    const allyComp = this.evaluateComp(allyBrawlers, { isFirstPickTeam: pickingSide === 'TEAM_A', currentSlot: session.currentSlot, enemyBrawlers, mode: session.map.mode });
+    const enemyComp = this.evaluateComp(enemyBrawlers, { isFirstPickTeam: pickingSide !== 'TEAM_A', currentSlot: session.currentSlot, enemyBrawlers: allyBrawlers, mode: session.map.mode });
     const macroMeta = getMacroMeta(session.map.mode);
 
     const deductions: DraftDeduction[] = [];
 
-    // Deduction 1: 1st Pick Anti-Tank Backbone (Aggro Modes)
     if (session.currentSlot === 1 && macroMeta === 'AGGRO') {
       deductions.push({
         id: 'first_pick_antitank',
@@ -210,7 +240,6 @@ export class DraftEngine {
       });
     }
 
-    // Deduction 2: Mandatory Anti-Tank Fix (Ally lacks Anti-Tank in Aggro modes during early/mid draft)
     if (macroMeta === 'AGGRO' && !allyComp.hasAntiTank && session.currentSlot > 1 && session.currentSlot < 6) {
       deductions.push({
         id: 'missing_antitank',
@@ -222,7 +251,6 @@ export class DraftEngine {
       });
     }
 
-    // Deduction 3: Space Maker Lockout (Ally lacks Space Maker in Slot 4/5 before enemy last pick)
     if ((session.currentSlot === 4 || session.currentSlot === 5) && !allyComp.hasSpaceMakerOrTank) {
       deductions.push({
         id: 'spacemaker_lockout',
@@ -234,7 +262,6 @@ export class DraftEngine {
       });
     }
 
-    // Deduction 3b: Preempt Enemy 6th Pick (Slot 5 when Ally has Anti-Tank + Space Maker)
     if (session.currentSlot === 5 && allyComp.hasAntiTank && allyComp.hasSpaceMakerOrTank) {
       if (!enemyComp.hasSpaceMakerOrTank) {
         deductions.push({
@@ -254,10 +281,29 @@ export class DraftEngine {
           priority: 'HIGH',
           icon: '🔮',
         });
+      } else {
+        if (session.map.mode === 'HEIST') {
+          deductions.push({
+            id: 'heist_safe_race',
+            targetArchetypes: ['THROWER', 'CONTROL', 'ANTI_TANK'],
+            title: '🎯 Heist Safe Melters & Wall Control',
+            reason: 'Both sides have Anti-Tank + Space Maker. Lock in top Heist safe melters and wall controllers (Chuck, Berry, Dynamike, Clancy, Lumi, Crow) to win the race.',
+            priority: 'HIGH',
+            icon: '🎯',
+          });
+        } else {
+          deductions.push({
+            id: 'comp_rounding',
+            targetArchetypes: ['CONTROL', 'SUPPORT', 'ANTI_TANK'],
+            title: '👑 S-Tier Comp Rounding & Mid Lockdown',
+            reason: 'Both sides have Anti-Tank + Space Maker. Lock in dominant controllers or support (Wendy, Lumi, Crow, Otis, Naija) to control mid-map.',
+            priority: 'HIGH',
+            icon: '👑',
+          });
+        }
       }
     }
 
-    // Deduction 4: Space Maker Exploitation (Enemy Squishies / Low DPS)
     const enemySquishies = enemyBrawlers.filter(
       e => e.archetype === 'SNIPER' || e.archetype === 'THROWER' || (e.archetype === 'CONTROL' && e.burstDamage <= 6)
     );
@@ -328,9 +374,9 @@ export class DraftEngine {
     if (session.map.mode === 'HEIST') {
       deductions.push({
         id: 'heist_objective',
-        targetArchetypes: ['ANTI_TANK', 'SPACE_MAKER'],
+        targetArchetypes: ['THROWER', 'ANTI_TANK', 'CONTROL', 'SPACE_MAKER'],
         title: 'Heist Objective: Safe Shredding & Race Damage',
-        reason: 'Heist requires high safe burst (Colt, Bull, Colette, Crow). If facing a Chuck, do not try to defend—race and out-damage on the opposite safe!',
+        reason: 'Heist requires safe burst and wall control (Chuck, Berry, Dynamike, Clancy, Colt, Bull, Crow). If facing a Chuck, do not try to defend—race and out-damage on the opposite safe!',
         priority: 'MEDIUM',
         icon: '🎯',
       });
@@ -532,8 +578,10 @@ export class DraftEngine {
         }
       } else if (session.currentSlot === 4 || session.currentSlot === 5) {
         if (brawler.archetype === 'THROWER' && brawler.id !== 'willow' && brawler.id !== 'berry') {
-          score -= 35;
-          riskWarning = `Drafting Throwers before enemy 6th pick allows opponent to hard counter with a Space Maker.`;
+          if (session.map.mode !== 'HEIST' && !enemyBrawlers.some(e => e.archetype === 'SPACE_MAKER')) {
+            score -= 35;
+            riskWarning = `Drafting Throwers before enemy 6th pick allows opponent to hard counter with a Space Maker.`;
+          }
         }
       }
 

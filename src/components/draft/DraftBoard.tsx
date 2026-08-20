@@ -35,11 +35,15 @@ export const DraftBoard: React.FC<Props> = ({
     isFirstPickTeam: isAllyTeamA,
     currentSlot: session.currentSlot,
     isAlly: true,
+    enemyBrawlers: enemyBrawlers,
+    mode: session.map.mode,
   });
   const enemyAnalysis = DraftEngine.evaluateComp(enemyBrawlers, {
     isFirstPickTeam: !isAllyTeamA,
     currentSlot: session.currentSlot,
     isAlly: false,
+    enemyBrawlers: allyBrawlers,
+    mode: session.map.mode,
   });
 
   const currentPickingTeam = getPickTeamForSlot(session.currentSlot);
