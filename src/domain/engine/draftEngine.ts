@@ -612,4 +612,160 @@ export class DraftEngine {
 
     return recommendations.sort((a, b) => b.score - a.score);
   }
+
+  /**
+   * Calculates optimal lane assignments and 1v1 matchups to prevent suicide lanes
+   * and maximize tactical counter advantage according to Bobby's masterclass.
+   */
+  public static calculateOptimalLanes(
+    allyBrawlers: Brawler[],
+    enemyBrawlers: Brawler[]
+  ): LaneMatchup[] {
+    if (allyBrawlers.length === 0 || enemyBrawlers.length === 0) {
+      return [];
+    }
+
+    const evaluatePair = (ally: Brawler, enemy: Brawler): { score: number; tip: string; advantage: 'ALLY_FAVORED' | 'ENEMY_FAVORED' | 'EVEN' } => {
+      let score = 0;
+      let tip = '';
+      let advantage: 'ALLY_FAVORED' | 'ENEMY_FAVORED' | 'EVEN' = 'EVEN';
+
+      // 1. Critical Rule: Never send low-burst/no-escape Control/Throwers/Snipers into Assassins
+      const isDangerousAssassin = enemy.archetype === 'SPACE_MAKER' || enemy.id === 'edgar' || enemy.id === 'mortis' || enemy.id === 'mico' || enemy.id === 'kenji' || enemy.id === 'lily';
+      const isVulnerableSquishy = (ally.archetype === 'CONTROL' && !ally.hasKnockback && !ally.hasStunOrMute) || ally.archetype === 'THROWER' || ally.archetype === 'SNIPER';
+
+      if (isDangerousAssassin && isVulnerableSquishy) {
+        score -= 60; // Huge penalty to avoid suicide lane!
+        tip = `DANGER: ${enemy.name} assassinates ${ally.name} easily. Swap lanes or maintain team peel!`;
+        advantage = 'ENEMY_FAVORED';
+        return { score, tip, advantage };
+      }
+
+      // 2. Direct counters
+      if (ally.counters.includes(enemy.archetype) || ally.counters.includes(enemy.id)) {
+        score += 30;
+        advantage = 'ALLY_FAVORED';
+        tip = `${ally.name} has strong counter advantage over ${enemy.name}.`;
+      }
+      if (ally.counteredBy.includes(enemy.archetype) || ally.counteredBy.includes(enemy.id)) {
+        score -= 30;
+        advantage = 'ENEMY_FAVORED';
+        tip = `${enemy.name} has matchup advantage. Play patiently and trade carefully.`;
+      }
+
+      // 3. Anti-Tank / Knockback vs Aggro/Dive
+      if (ally.hasKnockback || ally.hasStunOrMute || ally.archetype === 'ANTI_TANK') {
+        if (enemy.archetype === 'SPACE_MAKER' || enemy.archetype === 'TANK') {
+          score += 25;
+          advantage = 'ALLY_FAVORED';
+          tip = `${ally.name} CC / Knockback shuts down ${enemy.name}'s aggressive dive attempts.`;
+        }
+      }
+
+      // 4. Space Maker vs Thrower / Sniper
+      if (ally.archetype === 'SPACE_MAKER' && (enemy.archetype === 'THROWER' || enemy.archetype === 'SNIPER')) {
+        score += 35;
+        advantage = 'ALLY_FAVORED';
+        tip = `${ally.name} dive mobility runs down ${enemy.name} and denies free artillery.`;
+      }
+
+      // 5. Safe Range Poking / Mid Control
+      if (ally.archetype === 'CONTROL' || ally.archetype === 'SNIPER') {
+        if (enemy.archetype === 'ANTI_TANK' || enemy.archetype === 'SUPPORT') {
+          score += 15;
+          tip = `${ally.name} out-ranges and safely controls the lane against ${enemy.name}.`;
+        }
+      }
+
+      if (!tip) {
+        tip = `Even 1v1 matchup. Focus on positioning and dodging skillshots.`;
+      }
+
+      return { score, tip, advantage };
+    };
+
+    // If less than 3 brawlers on either side, do basic mapping
+    if (allyBrawlers.length < 3 || enemyBrawlers.length < 3) {
+      return allyBrawlers.map((ally, i) => {
+        const enemy = enemyBrawlers[i] || enemyBrawlers[0];
+        const res = enemy ? evaluatePair(ally, enemy) : { tip: 'Lane open', advantage: 'EVEN' as const };
+        const laneNames: ('Mid Anchor' | 'Left Lane' | 'Right Lane')[] = ['Mid Anchor', 'Left Lane', 'Right Lane'];
+        return {
+          laneName: laneNames[i] || 'Mid Anchor',
+          ally,
+          enemy: enemy || ally,
+          advantage: res.advantage,
+          tip: res.tip,
+        };
+      });
+    }
+
+    // Determine who is Mid Anchor: Prefer Controller / Long-range or Anti-Tank
+    const laneLabels: ('Mid Anchor' | 'Left Lane' | 'Right Lane')[] = ['Mid Anchor', 'Left Lane', 'Right Lane'];
+    const matchups: LaneMatchup[] = [];
+
+    // Identify best mid ally brawler (highest range/control/anti-tank)
+    let midIndex = 0;
+    let highestMidScore = -1;
+    allyBrawlers.forEach((b, idx) => {
+      let mScore = 0;
+      if (b.archetype === 'CONTROL') mScore += 30;
+      if (b.archetype === 'ANTI_TANK') mScore += 20;
+      if (b.archetype === 'SNIPER') mScore += 25;
+      if (mScore > highestMidScore) {
+        highestMidScore = mScore;
+        midIndex = idx;
+      }
+    });
+
+    const otherAllyIndices = [0, 1, 2].filter(i => i !== midIndex);
+    const orderedAlly = [allyBrawlers[midIndex], allyBrawlers[otherAllyIndices[0]], allyBrawlers[otherAllyIndices[1]]];
+
+    // Find best matching enemy for Mid, Left, Right
+    const remainingEnemy = [...enemyBrawlers];
+    
+    // Pick best enemy for mid
+    let bestMidEnemyIdx = 0;
+    let bestMidScore = -Infinity;
+    remainingEnemy.forEach((e, eIdx) => {
+      const score = evaluatePair(orderedAlly[0], e).score;
+      if (score > bestMidScore) {
+        bestMidScore = score;
+        bestMidEnemyIdx = eIdx;
+      }
+    });
+    const midEnemy = remainingEnemy.splice(bestMidEnemyIdx, 1)[0];
+
+    // For the other two lanes, test both assignments
+    const optA = evaluatePair(orderedAlly[1], remainingEnemy[0]).score + evaluatePair(orderedAlly[2], remainingEnemy[1]).score;
+    const optB = evaluatePair(orderedAlly[1], remainingEnemy[1]).score + evaluatePair(orderedAlly[2], remainingEnemy[0]).score;
+
+    const leftEnemy = optA >= optB ? remainingEnemy[0] : remainingEnemy[1];
+    const rightEnemy = optA >= optB ? remainingEnemy[1] : remainingEnemy[0];
+
+    const finalEnemies = [midEnemy, leftEnemy, rightEnemy];
+
+    for (let i = 0; i < 3; i++) {
+      const ally = orderedAlly[i];
+      const enemy = finalEnemies[i];
+      const evalResult = evaluatePair(ally, enemy);
+      matchups.push({
+        laneName: laneLabels[i],
+        ally,
+        enemy,
+        advantage: evalResult.advantage,
+        tip: evalResult.tip,
+      });
+    }
+
+    return matchups;
+  }
+}
+
+export interface LaneMatchup {
+  laneName: 'Mid Anchor' | 'Left Lane' | 'Right Lane';
+  ally: Brawler;
+  enemy: Brawler;
+  advantage: 'ALLY_FAVORED' | 'ENEMY_FAVORED' | 'EVEN';
+  tip: string;
 }

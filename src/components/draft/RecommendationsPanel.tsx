@@ -51,15 +51,11 @@ export const RecommendationsPanel: React.FC<Props> = ({
   const allyBrawlers = (isAllyTeamA ? session.picks.teamA : session.picks.teamB).map(id => BRAWLER_MAP[id]).filter(Boolean);
   const enemyBrawlers = (isAllyTeamA ? session.picks.teamB : session.picks.teamA).map(id => BRAWLER_MAP[id]).filter(Boolean);
 
-  const allyAnalysis = DraftEngine.evaluateComp(allyBrawlers, { isFirstPickTeam: isAllyTeamA, currentSlot: 6, isAlly: true });
-  const enemyAnalysis = DraftEngine.evaluateComp(enemyBrawlers, { isFirstPickTeam: !isAllyTeamA, currentSlot: 6, isAlly: false });
+  const allyAnalysis = DraftEngine.evaluateComp(allyBrawlers, { isFirstPickTeam: isAllyTeamA, currentSlot: 6, isAlly: true, enemyBrawlers, mode: session.map.mode });
+  const enemyAnalysis = DraftEngine.evaluateComp(enemyBrawlers, { isFirstPickTeam: !isAllyTeamA, currentSlot: 6, isAlly: false, enemyBrawlers: allyBrawlers, mode: session.map.mode });
 
-  // Determine Mid Anchor vs Side Duelists
-  const allyMid = allyBrawlers.find(b => b.archetype === 'CONTROL' || b.archetype === 'ANTI_TANK') || allyBrawlers[0];
-  const allySides = allyBrawlers.filter(b => b?.id !== allyMid?.id);
-
-  const enemyMid = enemyBrawlers.find(b => b.archetype === 'CONTROL' || b.archetype === 'ANTI_TANK') || enemyBrawlers[0];
-  const enemySides = enemyBrawlers.filter(b => b?.id !== enemyMid?.id);
+  // Intelligent Lane Allocations preventing suicide matchups
+  const optimalLanes = isComplete ? DraftEngine.calculateOptimalLanes(allyBrawlers, enemyBrawlers) : [];
 
   // Current turn side
   const currentPickingSide = getPickTeamForSlot(session.currentSlot);
@@ -174,7 +170,7 @@ export const RecommendationsPanel: React.FC<Props> = ({
               </div>
               <p className="text-xs text-gray-300 leading-relaxed">
                 Execute your <span className="text-yellow-400 font-bold">Anti-Tank + Space Maker</span> core.
-                {allyMid && ` Anchor the mid-zone with ${allyMid.name} while your side-duelists create flanking pressure.`}
+                {optimalLanes[0]?.ally && ` Anchor the mid-zone with ${optimalLanes[0].ally.name} while your side-duelists create flanking pressure.`}
               </p>
               <div className="space-y-1">
                 {allyAnalysis.strengths.map((str, i) => (
@@ -213,20 +209,21 @@ export const RecommendationsPanel: React.FC<Props> = ({
                 <span>RECOMMENDED LANE SETUP</span>
               </div>
               <div className="text-xs space-y-2 text-gray-300">
-                {allyMid && (
-                  <div className="flex items-center justify-between bg-gray-950/60 p-2 rounded-xl border border-gray-800">
-                    <span className="font-bold text-yellow-400">Mid Anchor:</span>
-                    <span className="font-brawl text-white">
-                      {allyMid.name} {enemyMid && <span className="text-gray-500 text-[10px] font-sans">vs {enemyMid.name}</span>}
-                    </span>
-                  </div>
-                )}
-                {allySides.map((sideBrawler, i) => (
-                  <div key={sideBrawler.id} className="flex items-center justify-between bg-gray-950/60 p-2 rounded-xl border border-gray-800">
-                    <span className="font-bold text-blue-300">{i === 0 ? 'Left Lane:' : 'Right Lane:'}</span>
-                    <span className="font-brawl text-white">
-                      {sideBrawler.name} {enemySides[i] && <span className="text-gray-500 text-[10px] font-sans">vs {enemySides[i].name}</span>}
-                    </span>
+                {optimalLanes.map(lane => (
+                  <div key={lane.laneName} className="bg-gray-950/60 p-2.5 rounded-xl border border-gray-800 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-yellow-400 text-[11px]">{lane.laneName}:</span>
+                      <span className="font-brawl text-xs text-white">
+                        <span className="text-blue-300">{lane.ally.name}</span>
+                        <span className="text-gray-500 font-sans text-[10px] mx-1">vs</span>
+                        <span className="text-red-400">{lane.enemy.name}</span>
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-gray-300 leading-tight">
+                      {lane.advantage === 'ALLY_FAVORED' && <span className="text-emerald-400 font-bold mr-1">✅ ADVANTAGE:</span>}
+                      {lane.advantage === 'ENEMY_FAVORED' && <span className="text-rose-400 font-bold mr-1">⚠️ CAUTION:</span>}
+                      {lane.tip}
+                    </p>
                   </div>
                 ))}
               </div>
