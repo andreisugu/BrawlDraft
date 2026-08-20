@@ -481,9 +481,11 @@ export class DraftEngine {
   public static recommendBans(session: DraftSession): BanRecommendation[] {
     const macroMeta = getMacroMeta(session.map.mode);
     const userIsFirstPick = session.userSide === 'TEAM_A';
-    const banned = getAllBannedBrawlers(session);
+    const allySideKey = session.userSide === 'TEAM_A' ? 'teamA' : 'teamB';
+    const allyBanned = session.bans[allySideKey];
 
-    const availableBrawlers = BRAWLERS.filter(b => !banned.includes(b.id));
+    // Bans are blind & simultaneous: only exclude brawlers already banned by this specific team
+    const availableBrawlers = BRAWLERS.filter(b => !allyBanned.includes(b.id));
     const recommendations: BanRecommendation[] = [];
 
     if (!userIsFirstPick) {

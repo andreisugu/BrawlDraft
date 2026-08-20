@@ -176,7 +176,26 @@ export const DraftRoom: React.FC = () => {
     setSelectedTargetSlot(null);
   };
 
-  const unavailableIds = [...getAllBannedBrawlers(session), ...getAllPickedBrawlers(session)];
+  // Context-aware unavailable brawlers: Blind simultaneous bans allow both teams to ban the same brawler
+  const isBanPhase = !skipBans && session.bans.teamA.length + session.bans.teamB.length < 6;
+
+  let unavailableIds: string[] = [];
+  if (selectedTargetSlot) {
+    if (selectedTargetSlot.type === 'BAN') {
+      // Blind bans: Only disable brawlers already banned by this SAME team
+      unavailableIds = session.bans[selectedTargetSlot.side];
+    } else {
+      // Pick phase: Disable ALL banned brawlers from both teams and all picked brawlers
+      unavailableIds = [...getAllBannedBrawlers(session), ...getAllPickedBrawlers(session)];
+    }
+  } else if (isBanPhase) {
+    // Ban phase automatic assignment: Disable brawlers banned by the team currently banning
+    const currentBanSide = session.bans.teamA.length <= session.bans.teamB.length && session.bans.teamA.length < 3 ? 'teamA' : 'teamB';
+    unavailableIds = session.bans[currentBanSide];
+  } else {
+    // General Pick phase
+    unavailableIds = [...getAllBannedBrawlers(session), ...getAllPickedBrawlers(session)];
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
