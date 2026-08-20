@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Brawler } from '../../domain/models/brawler';
 import { BrawlerArchetype, BobbyColorTag } from '../../domain/models/types';
 import { Shield, Zap, Crosshair, Target, Heart, Bomb, Sparkles, HelpCircle } from 'lucide-react';
@@ -51,6 +51,8 @@ export const BrawlerAvatar: React.FC<Props> = ({
   disabled = false,
   onClick,
 }) => {
+  const [imageError, setImageError] = useState(false);
+
   if (!brawler) {
     const emptyDimensions = {
       sm: 'w-10 h-10',
@@ -62,7 +64,7 @@ export const BrawlerAvatar: React.FC<Props> = ({
     return (
       <div
         onClick={disabled ? undefined : onClick}
-        className={`${emptyDimensions} rounded-xl border-2 border-dashed border-gray-700 bg-gray-900/50 flex flex-col items-center justify-center text-gray-500 hover:border-yellow-400/60 transition-colors cursor-pointer`}
+        className={`${emptyDimensions} rounded-2xl border-2 border-dashed border-gray-700 bg-gray-900/50 flex flex-col items-center justify-center text-gray-500 hover:border-yellow-400/60 transition-colors cursor-pointer`}
       >
         <HelpCircle className="w-5 h-5 opacity-40" />
         <span className="text-[9px] uppercase font-bold mt-0.5 opacity-60">Pick</span>
@@ -80,7 +82,7 @@ export const BrawlerAvatar: React.FC<Props> = ({
   const archetypeStyle = ARCHETYPE_COLORS[brawler.archetype];
   const bobbyColorStyle = BOBBY_COLOR_STYLES[brawler.colorTag];
 
-  // Dynamic gradient based on name
+  // Dynamic fallback gradient based on name
   const colors = [
     'from-amber-600 to-orange-700',
     'from-blue-600 to-indigo-800',
@@ -95,38 +97,50 @@ export const BrawlerAvatar: React.FC<Props> = ({
   return (
     <div
       onClick={disabled ? undefined : onClick}
-      className={`relative group rounded-xl border-2 transition-all duration-200 select-none flex flex-col items-center justify-center
+      className={`relative group rounded-2xl border-2 transition-all duration-200 select-none flex flex-col items-center justify-center
         ${dimensions}
-        ${selected ? 'border-yellow-400 ring-2 ring-yellow-400/80 scale-105 shadow-xl shadow-yellow-400/30' : bobbyColorStyle.border}
-        ${disabled ? 'opacity-30 grayscale cursor-not-allowed' : 'cursor-pointer hover:scale-105 hover:border-white/80 active:scale-95'}
-        bg-gradient-to-br ${gradient} shadow-md overflow-hidden`}
+        ${selected ? 'border-yellow-400 ring-4 ring-yellow-400/80 scale-105 shadow-2xl shadow-yellow-400/40 z-10' : bobbyColorStyle.border}
+        ${disabled ? 'opacity-30 grayscale cursor-not-allowed' : 'cursor-pointer hover:scale-105 hover:border-white active:scale-95'}
+        bg-gray-950 shadow-md overflow-hidden`}
     >
+      {/* High-Resolution Portrait Image or Fallback */}
+      {brawler.avatarUrl && !imageError ? (
+        <img
+          src={brawler.avatarUrl}
+          alt={brawler.name}
+          onError={() => setImageError(true)}
+          loading="lazy"
+          className="w-full h-full object-cover object-top scale-110 group-hover:scale-125 transition-transform duration-300"
+        />
+      ) : (
+        <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+          <span className="font-brawl text-white drop-shadow-md tracking-wider">
+            {brawler.name.slice(0, size === 'sm' ? 2 : 4).toUpperCase()}
+          </span>
+        </div>
+      )}
+
       {/* Bobby's Legend Color Indicator Dot / Tag */}
       {showBobbyColor && (
         <div
-          className={`absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full ${bobbyColorStyle.badgeBg} shadow-md ring-1 ring-black/40`}
+          className={`absolute top-1 right-1 w-3 h-3 rounded-full ${bobbyColorStyle.badgeBg} shadow-lg ring-1.5 ring-black/80 z-10`}
           title={`Bobby Tag: ${bobbyColorStyle.label}`}
         />
-      )}
-
-      {/* Center Initials */}
-      <span className="font-brawl text-white drop-shadow-md tracking-wider">
-        {brawler.name.slice(0, size === 'sm' ? 2 : 4).toUpperCase()}
-      </span>
-
-      {/* Name Footer */}
-      {size !== 'sm' && (
-        <div className="absolute bottom-0 inset-x-0 bg-black/80 py-0.5 text-center text-[10px] font-bold text-gray-200 truncate px-1">
-          {brawler.name}
-        </div>
       )}
 
       {/* Archetype Icon Badge */}
       {showArchetype && size !== 'sm' && (
         <div
-          className={`absolute top-0.5 left-0.5 flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold ${archetypeStyle.bg} ${archetypeStyle.text} border ${archetypeStyle.border}`}
+          className={`absolute top-1 left-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${archetypeStyle.bg} ${archetypeStyle.text} border ${archetypeStyle.border} backdrop-blur-md z-10`}
         >
           {ARCHETYPE_ICONS[brawler.archetype]}
+        </div>
+      )}
+
+      {/* Name Footer Bar */}
+      {size !== 'sm' && (
+        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-2 pb-0.5 text-center text-[10px] font-brawl tracking-wider text-gray-100 truncate px-1 z-10">
+          {brawler.name}
         </div>
       )}
     </div>

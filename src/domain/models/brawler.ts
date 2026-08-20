@@ -5,6 +5,7 @@ export interface Brawler {
   name: string;
   archetype: BrawlerArchetype;
   colorTag: BobbyColorTag;
+  avatarUrl?: string;
   subArchetype?: string;
   burstDamage: number; // 1 to 10 scale
   hasStunOrMute: boolean;

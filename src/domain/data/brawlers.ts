@@ -1,6 +1,7 @@
 import { Brawler } from '../models/brawler';
+import { getBrawlerIconUrl } from './brawlerIcons';
 
-export const BRAWLERS: Brawler[] = [
+export const RAW_BRAWLERS: Brawler[] = [
   // ==========================================
   // --- THROWERS (11) ---
   // ==========================================
@@ -1951,6 +1952,11 @@ export const BRAWLERS: Brawler[] = [
     description: 'Porter spawner soaks enemy sniper single-fire ammo.',
   },
 ];
+
+export const BRAWLERS: Brawler[] = RAW_BRAWLERS.map(b => ({
+  ...b,
+  avatarUrl: getBrawlerIconUrl(b.id),
+}));
 
 export const BRAWLER_MAP: Record<string, Brawler> = BRAWLERS.reduce((acc, b) => {
   acc[b.id] = b;
