@@ -43,6 +43,11 @@ export interface CompEvaluation {
   vulnerabilities: string[];
   strengths: string[];
   recommendedRoles: BrawlerArchetype[];
+  predictedEnemyNext?: {
+    predictedRoles: BrawlerArchetype[];
+    counterRoles: BrawlerArchetype[];
+    reason: string;
+  };
   compSummary: string;
 }
 
@@ -90,6 +95,7 @@ export class DraftEngine {
     const vulnerabilities: string[] = [];
     const strengths: string[] = [];
     const recommendedRoles: BrawlerArchetype[] = [];
+    let predictedEnemyNext: CompEvaluation['predictedEnemyNext'] = undefined;
     let compSummary = '';
 
     const isFirstPickTeam = context?.isFirstPickTeam ?? true;
@@ -118,7 +124,7 @@ export class DraftEngine {
       }
     }
 
-    // Determine Recommended Next Archetypes & Summary
+    // Determine Recommended Next Archetypes & Predicted Opponent Next Counter
     if (brawlers.length === 0) {
       recommendedRoles.push('ANTI_TANK', 'CONTROL');
       compSummary = 'First Pick: Secure an Anti-Tank foundation or top S-Tier Mid controller.';
@@ -135,8 +141,15 @@ export class DraftEngine {
       }
     } else if (brawlers.length === 2) {
       if (hasAntiTank && hasSpaceMakerOrTank) {
-        recommendedRoles.push('CONTROL', 'TANK', 'ANTI_TANK', 'SUPPORT');
-        compSummary = 'Balanced Foundation (Anti-Tank + Space Maker). Next: Round out with Area Control or Tank stat-check.';
+        recommendedRoles.push('CONTROL', 'ANTI_TANK', 'TANK', 'SUPPORT');
+        compSummary = 'Balanced Foundation (Anti-Tank + Space Maker). Next: Preempt enemy 6th pick with Hard CC or Area Control.';
+        if (isFirstPickTeam && currentSlot === 5) {
+          predictedEnemyNext = {
+            predictedRoles: ['SPACE_MAKER', 'TANK'],
+            counterRoles: ['CONTROL', 'ANTI_TANK'],
+            reason: 'Enemy lacks aggro dive. Preempt with Hard CC / Zone Lockdown (Lumi, Otis, Surge, Nori, Naija).',
+          };
+        }
       } else if (!hasSpaceMakerOrTank) {
         recommendedRoles.push('SPACE_MAKER', 'TANK');
         compSummary = 'Missing Dive Threat. Next: Space Maker mandatory to lock out enemy 6th pick throwers.';
@@ -163,6 +176,7 @@ export class DraftEngine {
       vulnerabilities,
       strengths,
       recommendedRoles,
+      predictedEnemyNext,
       compSummary,
     };
   }
@@ -218,6 +232,29 @@ export class DraftEngine {
         priority: 'CRITICAL',
         icon: '✨',
       });
+    }
+
+    // Deduction 3b: Preempt Enemy 6th Pick (Slot 5 when Ally has Anti-Tank + Space Maker)
+    if (session.currentSlot === 5 && allyComp.hasAntiTank && allyComp.hasSpaceMakerOrTank) {
+      if (!enemyComp.hasSpaceMakerOrTank) {
+        deductions.push({
+          id: 'preempt_enemy_dive',
+          targetArchetypes: ['CONTROL', 'ANTI_TANK'],
+          title: '🔮 Preempt Enemy 6th Pick: Anti-Dive & Zone Control',
+          reason: 'Enemy comp lacks dive/space and desperately needs a Space Maker or Tank on 6th pick. Lock in Hard CC / Zone Lockdown (Lumi, Otis, Surge, Gale, Nori, Naija) to preemptively render their last pick ineffective.',
+          priority: 'HIGH',
+          icon: '🔮',
+        });
+      } else if (!enemyComp.hasAntiTank) {
+        deductions.push({
+          id: 'preempt_enemy_tank',
+          targetArchetypes: ['ANTI_TANK', 'CONTROL'],
+          title: '🔮 Preempt Enemy 6th Pick: Heavy Tank Shredder',
+          reason: 'Enemy lacks anti-tank and may try to 6th-pick a heavy Tank (Frank/Draco). Lock in tank shredding control (Colette, Clancy, Chester, Griff) to permanently deny that win condition.',
+          priority: 'HIGH',
+          icon: '🔮',
+        });
+      }
     }
 
     // Deduction 4: Space Maker Exploitation (Enemy Squishies / Low DPS)

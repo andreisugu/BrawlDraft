@@ -3,7 +3,7 @@ import { DraftSession, getPickTeamForSlot } from '../../domain/models/draftSessi
 import { BRAWLER_MAP } from '../../domain/data/brawlers';
 import { BrawlerAvatar, ARCHETYPE_ICONS } from '../common/BrawlerAvatar';
 import { DraftEngine } from '../../domain/engine/draftEngine';
-import { ShieldAlert, Zap, Heart, Crosshair, Ban, CheckCircle2, X, Check, Target } from 'lucide-react';
+import { ShieldAlert, Zap, Heart, Crosshair, Ban, CheckCircle2, X, Check, Target, Sparkles } from 'lucide-react';
 
 interface Props {
   session: DraftSession;
@@ -295,6 +295,49 @@ export const DraftBoard: React.FC<Props> = ({
                     </span>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Preemptive Prediction & Counter for Slot 5 */}
+            {allyAnalysis.predictedEnemyNext && (
+              <div className="pt-2 border-t border-gray-800/80 space-y-1.5 bg-purple-950/20 p-2.5 rounded-xl border border-purple-500/20">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-purple-300">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                    Predicted Enemy 6th:
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {allyAnalysis.predictedEnemyNext.predictedRoles.map(role => (
+                      <span
+                        key={role}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-950/80 border border-purple-500/40 text-[9px] font-black uppercase text-purple-200"
+                      >
+                        {role.replace('_', ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-300">
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    Preemptive 5th Counter:
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {allyAnalysis.predictedEnemyNext.counterRoles.map(role => (
+                      <span
+                        key={role}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-500/40 text-[9px] font-black uppercase text-amber-200"
+                      >
+                        {role.replace('_', ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-gray-300 leading-tight">
+                  💡 {allyAnalysis.predictedEnemyNext.reason}
+                </p>
               </div>
             )}
           </div>
