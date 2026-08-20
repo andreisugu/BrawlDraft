@@ -25,6 +25,8 @@ export const DraftBoard: React.FC<Props> = ({
   const teamBAnalysis = DraftEngine.evaluateComp(teamBBrawlers);
 
   const currentPickingSide = getPickTeamForSlot(session.currentSlot);
+  const isCurrentAlly = currentPickingSide === session.userSide;
+  const isTeamAAlly = session.userSide === 'TEAM_A';
 
   // Map slots to draft positions
   const teamASlots = [
@@ -41,12 +43,12 @@ export const DraftBoard: React.FC<Props> = ({
 
   return (
     <div className="bg-gray-900/80 border border-gray-800 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-md">
-      {/* Draft Turn Banner & Instructions */}
+      {/* Draft Turn Banner & Turn Indicator */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-800">
         <div className="flex items-center gap-3">
           <div
             className={`w-3 h-3 rounded-full animate-ping ${
-              currentPickingSide === 'TEAM_A' ? 'bg-blue-400' : 'bg-red-400'
+              isCurrentAlly ? 'bg-blue-400' : 'bg-red-400'
             }`}
           />
           <div>
@@ -54,14 +56,18 @@ export const DraftBoard: React.FC<Props> = ({
               CURRENT TURN:{' '}
               <span
                 className={`font-brawl text-lg tracking-wide ${
-                  currentPickingSide === 'TEAM_A' ? 'text-blue-400' : 'text-red-400'
+                  session.isComplete
+                    ? 'text-emerald-400'
+                    : isCurrentAlly
+                    ? 'text-blue-400'
+                    : 'text-red-400'
                 }`}
               >
                 {session.isComplete
                   ? 'DRAFT COMPLETE'
-                  : currentPickingSide === 'TEAM_A'
-                  ? 'TEAM A (FIRST PICK)'
-                  : 'TEAM B (SECOND PICK)'}
+                  : isCurrentAlly
+                  ? `YOUR TEAM (PICK ${session.currentSlot})`
+                  : `ENEMY TEAM (PICK ${session.currentSlot})`}
               </span>
             </span>
             <p className="text-[11px] text-gray-500">
@@ -70,24 +76,29 @@ export const DraftBoard: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Turn Step Chips */}
+        {/* Turn Step Chips (Pick 1 to 6 Dynamic Ally/Enemy Colors) */}
         <div className="flex items-center gap-1.5 text-xs font-bold">
           {[1, 2, 3, 4, 5, 6].map(slot => {
             const isDone = session.currentSlot > slot || session.isComplete;
             const isCurrent = session.currentSlot === slot && !session.isComplete;
-            const side = getPickTeamForSlot(slot as any);
+            const pickingTeam = getPickTeamForSlot(slot as any);
+            const isAlly = pickingTeam === session.userSide;
 
             return (
               <div
                 key={slot}
-                className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 ${
+                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 border ${
                   isCurrent
-                    ? side === 'TEAM_A'
-                      ? 'bg-blue-600 text-white ring-2 ring-blue-400/50 scale-110 shadow-lg'
-                      : 'bg-red-600 text-white ring-2 ring-red-400/50 scale-110 shadow-lg'
+                    ? isAlly
+                      ? 'bg-blue-600 text-white ring-2 ring-blue-400 border-blue-400 scale-110 shadow-lg shadow-blue-500/40 font-black'
+                      : 'bg-red-600 text-white ring-2 ring-red-400 border-red-400 scale-110 shadow-lg shadow-red-500/40 font-black'
                     : isDone
-                    ? 'bg-gray-800 text-gray-400'
-                    : 'bg-gray-950/60 text-gray-600 border border-gray-800'
+                    ? isAlly
+                      ? 'bg-blue-950/40 text-blue-300 border-blue-500/40'
+                      : 'bg-red-950/40 text-red-300 border-red-500/40'
+                    : isAlly
+                    ? 'bg-blue-950/20 text-blue-400/80 border-blue-500/20'
+                    : 'bg-red-950/20 text-red-400/80 border-red-500/20'
                 }`}
               >
                 <span>Pick {slot}</span>
@@ -100,18 +111,38 @@ export const DraftBoard: React.FC<Props> = ({
 
       {/* Main Board Grid: Team A vs Team B */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
-        {/* TEAM A (Blue Side - First Pick) */}
-        <div className="bg-gradient-to-br from-blue-950/40 via-gray-900/50 to-gray-900 border border-blue-500/30 rounded-2xl p-4 sm:p-5 relative overflow-hidden">
+        {/* TEAM A (1st Pick Team) */}
+        <div
+          className={`bg-gradient-to-br ${
+            isTeamAAlly
+              ? 'from-blue-950/40 via-gray-900/50 to-gray-900 border-blue-500/40'
+              : 'from-red-950/40 via-gray-900/50 to-gray-900 border-red-500/40'
+          } border rounded-2xl p-4 sm:p-5 relative overflow-hidden`}
+        >
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-blue-500 shadow-md shadow-blue-500/50" />
-              <h3 className="font-brawl text-xl tracking-wider text-blue-400">TEAM A (1ST PICK)</h3>
-              {session.userSide === 'TEAM_A' && (
-                <span className="text-[10px] bg-blue-500/20 text-blue-300 font-black px-2 py-0.5 rounded border border-blue-500/40">
-                  YOU
-                </span>
-              )}
+              <span
+                className={`w-3 h-3 rounded-full shadow-md ${
+                  isTeamAAlly ? 'bg-blue-500 shadow-blue-500/50' : 'bg-red-500 shadow-red-500/50'
+                }`}
+              />
+              <h3
+                className={`font-brawl text-xl tracking-wider ${
+                  isTeamAAlly ? 'text-blue-400' : 'text-red-400'
+                }`}
+              >
+                {isTeamAAlly ? 'YOUR TEAM (1ST PICK)' : 'ENEMY TEAM (1ST PICK)'}
+              </h3>
+              <span
+                className={`text-[10px] font-black px-2 py-0.5 rounded border ${
+                  isTeamAAlly
+                    ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                    : 'bg-red-500/20 text-red-300 border-red-500/40'
+                }`}
+              >
+                {isTeamAAlly ? 'YOU' : 'OPPONENT'}
+              </span>
             </div>
 
             {/* Team A Bans */}
@@ -175,10 +206,14 @@ export const DraftBoard: React.FC<Props> = ({
                   }
                   className={`flex flex-col items-center p-3 rounded-xl border transition-all cursor-pointer relative group ${
                     isSelected
-                      ? 'bg-blue-900/40 border-yellow-400 ring-2 ring-yellow-400/50 scale-105 shadow-xl'
+                      ? isTeamAAlly
+                        ? 'bg-blue-900/40 border-yellow-400 ring-2 ring-yellow-400/50 scale-105 shadow-xl'
+                        : 'bg-red-900/40 border-yellow-400 ring-2 ring-yellow-400/50 scale-105 shadow-xl'
                       : brawler
                       ? 'bg-gray-800/60 border-gray-700 hover:border-gray-500'
-                      : 'bg-gray-950/50 border-gray-800 border-dashed hover:border-blue-400/60'
+                      : isTeamAAlly
+                      ? 'bg-gray-950/50 border-gray-800 border-dashed hover:border-blue-400/60'
+                      : 'bg-gray-950/50 border-gray-800 border-dashed hover:border-red-400/60'
                   }`}
                 >
                   {brawler && (
@@ -193,7 +228,11 @@ export const DraftBoard: React.FC<Props> = ({
                     </button>
                   )}
 
-                  <span className="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">
+                  <span
+                    className={`text-[11px] font-black uppercase tracking-wider mb-2 ${
+                      isTeamAAlly ? 'text-blue-300' : 'text-red-300'
+                    }`}
+                  >
                     {slotInfo.label}
                   </span>
                   <BrawlerAvatar brawler={brawler} size="lg" selected={isSelected} />
@@ -213,13 +252,13 @@ export const DraftBoard: React.FC<Props> = ({
           {/* Team A Comp Analytics */}
           <div className="bg-gray-950/60 rounded-xl p-3 border border-gray-800/80 space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-gray-400">
-              <span className="flex items-center gap-1.5 text-blue-300">
+              <span className={`flex items-center gap-1.5 ${isTeamAAlly ? 'text-blue-300' : 'text-red-300'}`}>
                 <Zap className="w-3.5 h-3.5 text-yellow-400" /> Burst DPS: {teamAAnalysis.burstRating}%
               </span>
-              <span className="flex items-center gap-1.5 text-blue-300">
+              <span className={`flex items-center gap-1.5 ${isTeamAAlly ? 'text-blue-300' : 'text-red-300'}`}>
                 <Heart className="w-3.5 h-3.5 text-rose-400" /> Effective HP: {teamAAnalysis.effectiveHpRating}%
               </span>
-              <span className="flex items-center gap-1.5 text-blue-300">
+              <span className={`flex items-center gap-1.5 ${isTeamAAlly ? 'text-blue-300' : 'text-red-300'}`}>
                 <Crosshair className="w-3.5 h-3.5 text-cyan-400" /> Range: {teamAAnalysis.rangeRating}%
               </span>
             </div>
@@ -237,18 +276,38 @@ export const DraftBoard: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* TEAM B (Red Side - Second/Last Pick) */}
-        <div className="bg-gradient-to-br from-red-950/40 via-gray-900/50 to-gray-900 border border-red-500/30 rounded-2xl p-4 sm:p-5 relative overflow-hidden">
+        {/* TEAM B (2nd/Last Pick Team) */}
+        <div
+          className={`bg-gradient-to-br ${
+            !isTeamAAlly
+              ? 'from-blue-950/40 via-gray-900/50 to-gray-900 border-blue-500/40'
+              : 'from-red-950/40 via-gray-900/50 to-gray-900 border-red-500/40'
+          } border rounded-2xl p-4 sm:p-5 relative overflow-hidden`}
+        >
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-red-500 shadow-md shadow-red-500/50" />
-              <h3 className="font-brawl text-xl tracking-wider text-red-400">TEAM B (LAST PICK)</h3>
-              {session.userSide === 'TEAM_B' && (
-                <span className="text-[10px] bg-red-500/20 text-red-300 font-black px-2 py-0.5 rounded border border-red-500/40">
-                  YOU
-                </span>
-              )}
+              <span
+                className={`w-3 h-3 rounded-full shadow-md ${
+                  !isTeamAAlly ? 'bg-blue-500 shadow-blue-500/50' : 'bg-red-500 shadow-red-500/50'
+                }`}
+              />
+              <h3
+                className={`font-brawl text-xl tracking-wider ${
+                  !isTeamAAlly ? 'text-blue-400' : 'text-red-400'
+                }`}
+              >
+                {!isTeamAAlly ? 'YOUR TEAM (LAST PICK)' : 'ENEMY TEAM (LAST PICK)'}
+              </h3>
+              <span
+                className={`text-[10px] font-black px-2 py-0.5 rounded border ${
+                  !isTeamAAlly
+                    ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                    : 'bg-red-500/20 text-red-300 border-red-500/40'
+                }`}
+              >
+                {!isTeamAAlly ? 'YOU' : 'OPPONENT'}
+              </span>
             </div>
 
             {/* Team B Bans */}
@@ -312,9 +371,13 @@ export const DraftBoard: React.FC<Props> = ({
                   }
                   className={`flex flex-col items-center p-3 rounded-xl border transition-all cursor-pointer relative group ${
                     isSelected
-                      ? 'bg-red-900/40 border-yellow-400 ring-2 ring-yellow-400/50 scale-105 shadow-xl'
+                      ? !isTeamAAlly
+                        ? 'bg-blue-900/40 border-yellow-400 ring-2 ring-yellow-400/50 scale-105 shadow-xl'
+                        : 'bg-red-900/40 border-yellow-400 ring-2 ring-yellow-400/50 scale-105 shadow-xl'
                       : brawler
                       ? 'bg-gray-800/60 border-gray-700 hover:border-gray-500'
+                      : !isTeamAAlly
+                      ? 'bg-gray-950/50 border-gray-800 border-dashed hover:border-blue-400/60'
                       : 'bg-gray-950/50 border-gray-800 border-dashed hover:border-red-400/60'
                   }`}
                 >
@@ -330,7 +393,11 @@ export const DraftBoard: React.FC<Props> = ({
                     </button>
                   )}
 
-                  <span className="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">
+                  <span
+                    className={`text-[11px] font-black uppercase tracking-wider mb-2 ${
+                      !isTeamAAlly ? 'text-blue-300' : 'text-red-300'
+                    }`}
+                  >
                     {slotInfo.label}
                   </span>
                   <BrawlerAvatar brawler={brawler} size="lg" selected={isSelected} />
@@ -350,13 +417,13 @@ export const DraftBoard: React.FC<Props> = ({
           {/* Team B Comp Analytics */}
           <div className="bg-gray-950/60 rounded-xl p-3 border border-gray-800/80 space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-gray-400">
-              <span className="flex items-center gap-1.5 text-red-300">
+              <span className={`flex items-center gap-1.5 ${!isTeamAAlly ? 'text-blue-300' : 'text-red-300'}`}>
                 <Zap className="w-3.5 h-3.5 text-yellow-400" /> Burst DPS: {teamBAnalysis.burstRating}%
               </span>
-              <span className="flex items-center gap-1.5 text-red-300">
+              <span className={`flex items-center gap-1.5 ${!isTeamAAlly ? 'text-blue-300' : 'text-red-300'}`}>
                 <Heart className="w-3.5 h-3.5 text-rose-400" /> Effective HP: {teamBAnalysis.effectiveHpRating}%
               </span>
-              <span className="flex items-center gap-1.5 text-red-300">
+              <span className={`flex items-center gap-1.5 ${!isTeamAAlly ? 'text-blue-300' : 'text-red-300'}`}>
                 <Crosshair className="w-3.5 h-3.5 text-cyan-400" /> Range: {teamBAnalysis.rangeRating}%
               </span>
             </div>
