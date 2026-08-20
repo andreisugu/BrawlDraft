@@ -261,7 +261,7 @@ export class DraftEngine {
     const enemySquishies = enemyBrawlers.filter(
       e => e.archetype === 'SNIPER' || e.archetype === 'THROWER' || (e.archetype === 'CONTROL' && e.burstDamage <= 6)
     );
-    if (enemySquishies.length >= 1 || (enemyComp.burstRating < 65 && enemyBrawlers.length >= 1)) {
+    if (!allyComp.hasSpaceMakerOrTank && (enemySquishies.length >= 1 || (enemyComp.burstRating < 65 && enemyBrawlers.length >= 1))) {
       if (!deductions.some(d => d.id === 'spacemaker_lockout')) {
         deductions.push({
           id: 'spacemaker_punish',

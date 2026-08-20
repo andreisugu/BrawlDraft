@@ -6,18 +6,25 @@ import { DraftBoard } from './DraftBoard';
 import { RecommendationsPanel } from './RecommendationsPanel';
 import { BrawlerSelectorModal } from './BrawlerSelectorModal';
 import { Brawler } from '../../domain/models/brawler';
-import { DraftSide } from '../../domain/models/types';
+import { BrawlerArchetype, DraftSide } from '../../domain/models/types';
 import { RefreshCw, MapPin, Info, PlusCircle, FastForward, Shield } from 'lucide-react';
 
 export const DraftRoom: React.FC = () => {
   const [selectedMap, setSelectedMap] = useState<BrawlMap>(MAPS[0]);
   const [userSide, setUserSide] = useState<DraftSide>('TEAM_A');
   const [skipBans, setSkipBans] = useState<boolean>(false);
+  const [selectedArchetypeFilter, setSelectedArchetypeFilter] = useState<BrawlerArchetype | 'ALL'>('ALL');
   const [selectedTargetSlot, setSelectedTargetSlot] = useState<{
     type: 'PICK' | 'BAN';
     side: 'teamA' | 'teamB';
     index: number;
   } | null>(null);
+
+  const handleFilterArchetype = (arch: BrawlerArchetype | 'ALL') => {
+    setSelectedArchetypeFilter(arch);
+    const el = document.getElementById('recommendations-panel');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const [session, setSession] = useState<DraftSession>({
     id: 'draft_session_live',
@@ -274,18 +281,21 @@ export const DraftRoom: React.FC = () => {
         )}
       </div>
 
-      {/* Main Draft Board (Team A vs Team B) with Click-to-Pick */}
+      {/* Main Draft Board (Team A vs Team B) with Click-to-Pick & Click-to-Filter */}
       <DraftBoard
         session={session}
         selectedTargetSlot={selectedTargetSlot}
         onSlotSelect={handleSlotSelect}
         onClearSlot={handleClearSlot}
+        onFilterArchetype={handleFilterArchetype}
       />
 
       {/* Real-time Recommendations Panel driven by Role Deductions */}
       <RecommendationsPanel
         session={session}
         skipBans={skipBans}
+        selectedArchetypeFilter={selectedArchetypeFilter}
+        onFilterChange={setSelectedArchetypeFilter}
         onToggleSkipBans={() => setSkipBans(!skipBans)}
         onSelectBrawler={handleSelectBrawlerId}
       />

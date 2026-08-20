@@ -5,11 +5,14 @@ import { BrawlerAvatar, ARCHETYPE_ICONS } from '../common/BrawlerAvatar';
 import { DraftEngine } from '../../domain/engine/draftEngine';
 import { ShieldAlert, Zap, Heart, Crosshair, Ban, CheckCircle2, X, Check, Target, Sparkles } from 'lucide-react';
 
+import { BrawlerArchetype } from '../../domain/models/types';
+
 interface Props {
   session: DraftSession;
   selectedTargetSlot: { type: 'PICK' | 'BAN'; side: 'teamA' | 'teamB'; index: number } | null;
   onSlotSelect: (target: { type: 'PICK' | 'BAN'; side: 'teamA' | 'teamB'; index: number }) => void;
   onClearSlot: (target: { type: 'PICK' | 'BAN'; side: 'teamA' | 'teamB'; index: number }) => void;
+  onFilterArchetype?: (arch: BrawlerArchetype | 'ALL') => void;
 }
 
 export const DraftBoard: React.FC<Props> = ({
@@ -17,6 +20,7 @@ export const DraftBoard: React.FC<Props> = ({
   selectedTargetSlot,
   onSlotSelect,
   onClearSlot,
+  onFilterArchetype,
 }) => {
   const isAllyTeamA = session.userSide === 'TEAM_A';
 
@@ -277,7 +281,7 @@ export const DraftBoard: React.FC<Props> = ({
               </div>
             ))}
 
-            {/* Recommended Next Roles */}
+            {/* Recommended Next Roles (Click to Filter) */}
             {allyAnalysis.recommendedRoles.length > 0 && (
               <div className="pt-1.5 border-t border-gray-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-300">
@@ -286,13 +290,15 @@ export const DraftBoard: React.FC<Props> = ({
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {allyAnalysis.recommendedRoles.map(role => (
-                    <span
+                    <button
                       key={role}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-900/40 border border-blue-500/40 text-[10px] font-black uppercase text-blue-200"
+                      onClick={() => onFilterArchetype?.(role)}
+                      title={`Click to filter by ${role.replace('_', ' ')}`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-900/40 hover:bg-blue-600/50 hover:scale-105 border border-blue-500/40 text-[10px] font-black uppercase text-blue-200 transition-all cursor-pointer shadow-sm active:scale-95"
                     >
                       {ARCHETYPE_ICONS[role]}
                       <span>{role.replace('_', ' ')}</span>
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -308,12 +314,14 @@ export const DraftBoard: React.FC<Props> = ({
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {allyAnalysis.predictedEnemyNext.predictedRoles.map(role => (
-                      <span
+                      <button
                         key={role}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-950/80 border border-purple-500/40 text-[9px] font-black uppercase text-purple-200"
+                        onClick={() => onFilterArchetype?.(role)}
+                        title={`Click to filter by ${role.replace('_', ' ')}`}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-950/80 hover:bg-purple-700/60 hover:scale-105 border border-purple-500/40 text-[9px] font-black uppercase text-purple-200 transition-all cursor-pointer shadow-sm active:scale-95"
                       >
                         {role.replace('_', ' ')}
-                      </span>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -325,12 +333,14 @@ export const DraftBoard: React.FC<Props> = ({
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {allyAnalysis.predictedEnemyNext.counterRoles.map(role => (
-                      <span
+                      <button
                         key={role}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-500/40 text-[9px] font-black uppercase text-amber-200"
+                        onClick={() => onFilterArchetype?.(role)}
+                        title={`Click to filter by ${role.replace('_', ' ')}`}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-950/80 hover:bg-amber-700/60 hover:scale-105 border border-amber-500/40 text-[9px] font-black uppercase text-amber-200 transition-all cursor-pointer shadow-sm active:scale-95"
                       >
                         {role.replace('_', ' ')}
-                      </span>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -493,7 +503,7 @@ export const DraftBoard: React.FC<Props> = ({
               </div>
             ))}
 
-            {/* Enemy Recommended Roles */}
+            {/* Enemy Recommended Roles (Click to Filter) */}
             {enemyAnalysis.recommendedRoles.length > 0 && (
               <div className="pt-1.5 border-t border-gray-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-red-300">
@@ -502,13 +512,15 @@ export const DraftBoard: React.FC<Props> = ({
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {enemyAnalysis.recommendedRoles.map(role => (
-                    <span
+                    <button
                       key={role}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-900/40 border border-red-500/40 text-[10px] font-black uppercase text-red-200"
+                      onClick={() => onFilterArchetype?.(role)}
+                      title={`Click to filter by ${role.replace('_', ' ')}`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-900/40 hover:bg-red-600/50 hover:scale-105 border border-red-500/40 text-[10px] font-black uppercase text-red-200 transition-all cursor-pointer shadow-sm active:scale-95"
                     >
                       {ARCHETYPE_ICONS[role]}
                       <span>{role.replace('_', ' ')}</span>
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>

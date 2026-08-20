@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { DraftSession, getPickTeamForSlot } from '../../domain/models/draftSession';
 import { DraftEngine, PickRecommendation, BanRecommendation } from '../../domain/engine/draftEngine';
 import { BrawlerAvatar, ARCHETYPE_ICONS, BOBBY_COLOR_STYLES } from '../common/BrawlerAvatar';
@@ -21,6 +21,8 @@ import {
 interface Props {
   session: DraftSession;
   skipBans?: boolean;
+  selectedArchetypeFilter?: BrawlerArchetype | 'ALL';
+  onFilterChange?: (arch: BrawlerArchetype | 'ALL') => void;
   onToggleSkipBans?: () => void;
   onSelectBrawler: (brawlerId: string) => void;
 }
@@ -28,11 +30,11 @@ interface Props {
 export const RecommendationsPanel: React.FC<Props> = ({
   session,
   skipBans = false,
+  selectedArchetypeFilter = 'ALL',
+  onFilterChange,
   onToggleSkipBans,
   onSelectBrawler,
 }) => {
-  const [selectedArchetypeFilter, setSelectedArchetypeFilter] = useState<BrawlerArchetype | 'ALL'>('ALL');
-
   const isComplete = session.isComplete || (session.picks.teamA.filter(Boolean).length === 3 && session.picks.teamB.filter(Boolean).length === 3);
   const isBanPhase = !isComplete && !skipBans && (session.bans.teamA.length + session.bans.teamB.length < 6);
   const banRecs: BanRecommendation[] = isBanPhase ? DraftEngine.recommendBans(session) : [];
@@ -64,7 +66,7 @@ export const RecommendationsPanel: React.FC<Props> = ({
   const isAllyTurn = currentPickingSide === session.userSide;
 
   return (
-    <div className="bg-gray-900/90 border border-gray-800 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-md space-y-6">
+    <div id="recommendations-panel" className="bg-gray-900/90 border border-gray-800 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-md space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-800">
         <div>
@@ -126,7 +128,7 @@ export const RecommendationsPanel: React.FC<Props> = ({
             {!isBanPhase && (
               <div className="flex flex-wrap gap-1">
                 <button
-                  onClick={() => setSelectedArchetypeFilter('ALL')}
+                  onClick={() => onFilterChange?.('ALL')}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-black uppercase transition-all ${
                     selectedArchetypeFilter === 'ALL'
                       ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/20'
@@ -139,7 +141,7 @@ export const RecommendationsPanel: React.FC<Props> = ({
                   arch => (
                     <button
                       key={arch}
-                      onClick={() => setSelectedArchetypeFilter(arch)}
+                      onClick={() => onFilterChange?.(arch)}
                       className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase transition-all ${
                         selectedArchetypeFilter === arch
                           ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/20'
