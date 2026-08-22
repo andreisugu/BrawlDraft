@@ -26,6 +26,7 @@ import {
 interface Props {
   session: DraftSession;
   skipBans?: boolean;
+  allowDuplicates?: boolean;
   selectedArchetypeFilter?: BrawlerArchetype | 'ALL';
   preferredBrawlerIds?: string[];
   onOpenPoolModal?: () => void;
@@ -38,6 +39,7 @@ interface Props {
 export const RecommendationsPanel: React.FC<Props> = ({
   session,
   skipBans = false,
+  allowDuplicates = false,
   selectedArchetypeFilter = 'ALL',
   preferredBrawlerIds = [],
   onOpenPoolModal,
@@ -49,7 +51,7 @@ export const RecommendationsPanel: React.FC<Props> = ({
   const isComplete = session.isComplete || (session.picks.teamA.filter(Boolean).length === 3 && session.picks.teamB.filter(Boolean).length === 3);
   const isBanPhase = !isComplete && !skipBans && (session.bans.teamA.length + session.bans.teamB.length < 6);
   const banRecs: BanRecommendation[] = isBanPhase ? DraftEngine.recommendBans(session) : [];
-  const pickRecs: PickRecommendation[] = !isBanPhase && !isComplete ? DraftEngine.recommendPicks(session) : [];
+  const pickRecs: PickRecommendation[] = !isBanPhase && !isComplete ? DraftEngine.recommendPicks(session, { allowDuplicates }) : [];
   const deductions = !isBanPhase && !isComplete ? DraftEngine.getDeductions(session) : [];
 
   const filteredPickRecs =

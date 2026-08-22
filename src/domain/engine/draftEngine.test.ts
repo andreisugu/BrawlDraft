@@ -111,5 +111,38 @@ describe('DraftEngine - Bobby Pro Draft Masterclass Acceptance Tests', () => {
       expect(hasExploitArchetype).toBe(true);
     });
   });
+
+  // Test Non-Exclusive / Allow Duplicates Mode
+  describe('Non-Exclusive / Allow Duplicates Mode', () => {
+    it('allows picking mirror/duplicate brawlers when allowDuplicates is true', () => {
+      const map = MAP_MAP['ring_of_fire'];
+      const session: DraftSession = {
+        id: 'duplicates_test',
+        map,
+        userSide: 'TEAM_B',
+        bans: { teamA: [], teamB: [] },
+        picks: {
+          teamA: ['crow', 'lou', 'clancy'],
+          teamB: [],
+        },
+        currentSlot: 2,
+        isComplete: false,
+      };
+
+      // Standard mode: crow, lou, clancy are unavailable
+      const standardRecs = DraftEngine.recommendPicks(session, { allowDuplicates: false });
+      const standardIds = standardRecs.map(r => r.brawler.id);
+      expect(standardIds).not.toContain('crow');
+      expect(standardIds).not.toContain('lou');
+      expect(standardIds).not.toContain('clancy');
+
+      // Duplicate mode: crow, lou, clancy CAN be picked as mirror picks
+      const duplicateRecs = DraftEngine.recommendPicks(session, { allowDuplicates: true });
+      const duplicateIds = duplicateRecs.map(r => r.brawler.id);
+      expect(duplicateIds).toContain('crow');
+      expect(duplicateIds).toContain('lou');
+      expect(duplicateIds).toContain('clancy');
+    });
+  });
 });
 

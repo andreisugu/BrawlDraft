@@ -14,6 +14,7 @@ export interface DraftSession {
     teamB: string[]; // Brawler IDs picked by Team B (picks 2, 3, 6)
   };
   currentSlot: PickSlot; // 1 to 6
+  allowDuplicates?: boolean; // Whether non-exclusive duplicate brawlers are permitted
   isComplete: boolean;
 }
 

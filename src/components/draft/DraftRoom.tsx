@@ -8,12 +8,13 @@ import { BrawlerSelectorModal } from './BrawlerSelectorModal';
 import { BrawlerPoolModal } from './BrawlerPoolModal';
 import { Brawler } from '../../domain/models/brawler';
 import { BrawlerArchetype, DraftSide } from '../../domain/models/types';
-import { RefreshCw, MapPin, Info, PlusCircle, FastForward, Shield, Star } from 'lucide-react';
+import { RefreshCw, MapPin, Info, PlusCircle, FastForward, Shield, Star, Copy } from 'lucide-react';
 
 export const DraftRoom: React.FC = () => {
   const [selectedMap, setSelectedMap] = useState<BrawlMap>(MAPS[0]);
   const [userSide, setUserSide] = useState<DraftSide>('TEAM_A');
   const [skipBans, setSkipBans] = useState<boolean>(false);
+  const [allowDuplicates, setAllowDuplicates] = useState<boolean>(false);
   const [selectedArchetypeFilter, setSelectedArchetypeFilter] = useState<BrawlerArchetype | 'ALL'>('ALL');
   const [selectedTargetSlot, setSelectedTargetSlot] = useState<{
     type: 'PICK' | 'BAN';
@@ -218,8 +219,10 @@ export const DraftRoom: React.FC = () => {
       // Blind bans: Only disable brawlers already banned by this SAME team
       unavailableIds = session.bans[selectedTargetSlot.side];
     } else {
-      // Pick phase: Disable ALL banned brawlers from both teams and all picked brawlers
-      unavailableIds = [...getAllBannedBrawlers(session), ...getAllPickedBrawlers(session)];
+      // Pick phase: In non-exclusive duplicate mode, only banned brawlers are disabled
+      unavailableIds = allowDuplicates
+        ? getAllBannedBrawlers(session)
+        : [...getAllBannedBrawlers(session), ...getAllPickedBrawlers(session)];
     }
   } else if (isBanPhase) {
     // Ban phase automatic assignment: Disable brawlers banned by the team currently banning
@@ -227,7 +230,9 @@ export const DraftRoom: React.FC = () => {
     unavailableIds = session.bans[currentBanSide];
   } else {
     // General Pick phase
-    unavailableIds = [...getAllBannedBrawlers(session), ...getAllPickedBrawlers(session)];
+    unavailableIds = allowDuplicates
+      ? getAllBannedBrawlers(session)
+      : [...getAllBannedBrawlers(session), ...getAllPickedBrawlers(session)];
   }
 
   return (
@@ -263,7 +268,7 @@ export const DraftRoom: React.FC = () => {
           </div>
 
           {/* User Pick Side (Coin Flip), Skip Bans Toggle & Reset */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             {/* Coin Flip Side */}
             <div className="flex items-center bg-gray-950 p-1 rounded-xl border border-gray-800">
               <button
@@ -291,7 +296,7 @@ export const DraftRoom: React.FC = () => {
             {/* Skip Bans Toggle */}
             <button
               onClick={() => setSkipBans(!skipBans)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider border transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider border transition-all cursor-pointer ${
                 skipBans
                   ? 'bg-purple-950/60 text-purple-300 border-purple-500/50 shadow-md shadow-purple-500/20'
                   : 'bg-gray-950 text-gray-400 border-gray-800 hover:text-gray-200'
@@ -299,6 +304,20 @@ export const DraftRoom: React.FC = () => {
             >
               {skipBans ? <FastForward className="w-3.5 h-3.5 text-purple-400" /> : <Shield className="w-3.5 h-3.5" />}
               <span>{skipBans ? 'Bans: Skipped' : 'Bans: Active'}</span>
+            </button>
+
+            {/* Allow Duplicates / Non-Exclusive Toggle */}
+            <button
+              onClick={() => setAllowDuplicates(!allowDuplicates)}
+              title={allowDuplicates ? 'Non-Exclusive Mode: Duplicate brawlers are allowed across and within teams' : 'Standard Competitive Mode: Each brawler can only be picked once'}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider border transition-all cursor-pointer ${
+                allowDuplicates
+                  ? 'bg-cyan-950/60 text-cyan-300 border-cyan-500/50 shadow-md shadow-cyan-500/20 ring-1 ring-cyan-400/40'
+                  : 'bg-gray-950 text-gray-400 border-gray-800 hover:text-gray-200'
+              }`}
+            >
+              <Copy className={`w-3.5 h-3.5 ${allowDuplicates ? 'text-cyan-400' : 'text-gray-400'}`} />
+              <span>{allowDuplicates ? 'Duplicates: ON' : 'Duplicates: OFF'}</span>
             </button>
 
             {/* Preferred Brawlers Pool Button */}
@@ -356,6 +375,7 @@ export const DraftRoom: React.FC = () => {
       <RecommendationsPanel
         session={session}
         skipBans={skipBans}
+        allowDuplicates={allowDuplicates}
         selectedArchetypeFilter={selectedArchetypeFilter}
         preferredBrawlerIds={preferredPool}
         onOpenPoolModal={() => setPoolModalOpen(true)}

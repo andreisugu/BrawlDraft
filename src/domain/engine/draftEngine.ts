@@ -731,7 +731,7 @@ export class DraftEngine {
   /**
    * Recommends picks using strategic role deductions and counter-picking heuristics
    */
-  public static recommendPicks(session: DraftSession): PickRecommendation[] {
+  public static recommendPicks(session: DraftSession, options?: { allowDuplicates?: boolean }): PickRecommendation[] {
     const pickingSide = getPickTeamForSlot(session.currentSlot);
     const allyPickedIds = pickingSide === 'TEAM_A' ? session.picks.teamA : session.picks.teamB;
     const enemyPickedIds = pickingSide === 'TEAM_A' ? session.picks.teamB : session.picks.teamA;
@@ -741,7 +741,10 @@ export class DraftEngine {
 
     const enemyComp = this.evaluateComp(enemyBrawlers, { isFirstPickTeam: pickingSide !== 'TEAM_A', currentSlot: session.currentSlot, enemyBrawlers: allyBrawlers, mode: session.map.mode });
 
-    const unavailable = [...getAllBannedBrawlers(session), ...getAllPickedBrawlers(session)];
+    const allowDuplicates = options?.allowDuplicates ?? session.allowDuplicates ?? false;
+    const unavailable = allowDuplicates
+      ? getAllBannedBrawlers(session)
+      : [...getAllBannedBrawlers(session), ...getAllPickedBrawlers(session)];
     const candidateBrawlers = BRAWLERS.filter(b => !unavailable.includes(b.id));
 
     const deductions = this.getDeductions(session);
