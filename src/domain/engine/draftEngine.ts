@@ -372,23 +372,29 @@ export class DraftEngine {
 
       // 1. Exploit: Enemy Lacks Anti-Tank (Heavy Tank / Aggro Overrun)
       if (!enemyComp.hasAntiTank) {
+        const isTerrainOpen = session.map.terrain === 'OPEN';
         deductions.push({
           id: 'exploit_no_antitank',
-          targetArchetypes: ['TANK', 'SPACE_MAKER'],
-          title: '💥 100% Win Condition: Heavy Tank / Stat-Check Overrun',
-          reason: `The opponent drafted ZERO Anti-Tanks (${enemyBrawlers.map(b => b.name).join(', ')}). They have no burst shred or CC. Lock in a Heavy Tank (Draco, Frank, Buster, Meg, Bull) or aggressive Space Maker (Kenji, Kaze, Nori, Bolt) to stat-check them and walk uncontested onto the objectives.`,
+          targetArchetypes: isTerrainOpen ? ['SNIPER', 'SPACE_MAKER'] : ['TANK', 'SPACE_MAKER'],
+          title: isTerrainOpen ? '🎯 100% Win Condition: Open Sightline Marksman & Long-Dash Flank' : '💥 100% Win Condition: Heavy Tank / Stat-Check Overrun',
+          reason: isTerrainOpen
+            ? `The opponent drafted ZERO Anti-Tanks (${enemyBrawlers.map(b => b.name).join(', ')}). On this open map, exploit their lack of burst defense with premier long-range snipers (Piper, Belle, Angelo, Brock, Pierce) or high-speed assassins (Bolt, Leon).`
+            : `The opponent drafted ZERO Anti-Tanks (${enemyBrawlers.map(b => b.name).join(', ')}). They have no burst shred or CC. Lock in a Heavy Tank (Draco, Frank, Buster, Meg, Bull) or aggressive Space Maker (Kenji, Kaze, Nori) to stat-check them and walk uncontested onto the objectives.`,
           priority: 'CRITICAL',
-          icon: '🧱',
+          icon: isTerrainOpen ? '🎯' : '🧱',
         });
       }
 
       // 2. Exploit: Enemy Lacks Space Maker / Dive (Free Thrower / Sniper Abuse)
       if (!enemyComp.hasSpaceMakerOrTank) {
+        const isTerrainOpen = session.map.terrain === 'OPEN';
         deductions.push({
           id: 'exploit_no_spacemaker',
           targetArchetypes: ['THROWER', 'SNIPER'],
-          title: '💣 100% Win Condition: Untouchable Thrower / Sniper Artillery',
-          reason: `The opponent drafted ZERO Space Makers or dive threats (${enemyBrawlers.map(b => b.name).join(', ')}). A Thrower (Dynamike, Berry, Larry, Sirius, Tick, Sprout, Grom, Barley) or long-range Sniper is 100% untouchable behind walls and gets free infinite value.`,
+          title: isTerrainOpen ? '💣 100% Win Condition: Back-Wall Artillery & Pure Sniper Dominance' : '💣 100% Win Condition: Untouchable Thrower / Sniper Artillery',
+          reason: isTerrainOpen
+            ? `The opponent drafted ZERO Space Makers or dive threats (${enemyBrawlers.map(b => b.name).join(', ')}). Long-range Throwers (Tick, Sprout, Grom, Sirius) behind the back walls or premier Snipers (Piper, Belle, Angelo) have 100% safety and zero threat of being jumped.`
+            : `The opponent drafted ZERO Space Makers or dive threats (${enemyBrawlers.map(b => b.name).join(', ')}). A Thrower (Dynamike, Berry, Larry, Sirius, Tick, Sprout, Grom, Barley) or long-range Sniper is 100% untouchable behind walls and gets free infinite value.`,
           priority: 'CRITICAL',
           icon: '💣',
         });
