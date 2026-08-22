@@ -50,6 +50,7 @@ export const RecommendationsPanel: React.FC<Props> = ({
   onTurnSelect,
   onSelectBrawler,
 }) => {
+  const [displayLimit, setDisplayLimit] = React.useState<number>(30);
   const isComplete = session.isComplete || (session.picks.teamA.filter(Boolean).length === 3 && session.picks.teamB.filter(Boolean).length === 3);
   const isBanPhase = !isComplete && !skipBans && (session.bans.teamA.length + session.bans.teamB.length < 6);
   const banRecs: BanRecommendation[] = isBanPhase ? DraftEngine.recommendBans(session) : [];
@@ -563,17 +564,40 @@ export const RecommendationsPanel: React.FC<Props> = ({
       {/* PICK PHASE RECOMMENDATIONS (GLOBAL META) */}
       {!isComplete && !isBanPhase && (
         <div className="space-y-3">
-          {preferredBrawlerIds.length > 0 && isAllyTurn && (
-            <div className="flex items-center gap-2 pt-2">
-              <Brain className="w-4 h-4 text-gray-400" />
-              <span className="text-xs uppercase font-black tracking-wider text-gray-400">
-                Full Competitive Meta Recommendations (All Brawlers)
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 pb-1 border-b border-gray-800/60">
+            <div className="flex items-center gap-2">
+              <Brain className="w-4 h-4 text-yellow-400" />
+              <span className="text-xs uppercase font-black tracking-wider text-gray-300">
+                {preferredBrawlerIds.length > 0 && isAllyTurn
+                  ? 'Full Competitive Meta Recommendations (All Brawlers)'
+                  : 'Competitive Meta Recommendations'}
+              </span>
+              <span className="text-[11px] text-gray-500 font-sans">
+                ({Math.min(displayLimit, filteredPickRecs.length)} of {filteredPickRecs.length})
               </span>
             </div>
-          )}
+
+            {/* Configurable Limit Dropdown */}
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <label className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
+                Show:
+              </label>
+              <select
+                value={displayLimit}
+                onChange={e => setDisplayLimit(Number(e.target.value))}
+                className="bg-gray-950 border border-gray-700 hover:border-yellow-500/50 text-yellow-400 text-xs font-bold rounded-lg px-2.5 py-1 outline-none cursor-pointer transition-colors shadow-inner"
+              >
+                <option value={9}>Top 9</option>
+                <option value={15}>Top 15</option>
+                <option value={30}>Top 30</option>
+                <option value={50}>Top 50</option>
+                <option value={100}>All ({filteredPickRecs.length})</option>
+              </select>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredPickRecs.slice(0, 9).map(rec => {
+            {filteredPickRecs.slice(0, displayLimit).map(rec => {
               const bobbyColor = BOBBY_COLOR_STYLES[rec.brawler.colorTag];
 
             return (
