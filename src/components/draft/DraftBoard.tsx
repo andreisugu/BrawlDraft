@@ -1,5 +1,5 @@
 import React from 'react';
-import { DraftSession, getPickTeamForSlot } from '../../domain/models/draftSession';
+import { DraftSession, getPickTeamForSlot, isSlotFilled } from '../../domain/models/draftSession';
 import { BRAWLER_MAP } from '../../domain/data/brawlers';
 import { BrawlerAvatar, ARCHETYPE_ICONS } from '../common/BrawlerAvatar';
 import { DraftEngine } from '../../domain/engine/draftEngine';
@@ -13,6 +13,7 @@ interface Props {
   onSlotSelect: (target: { type: 'PICK' | 'BAN'; side: 'teamA' | 'teamB'; index: number }) => void;
   onClearSlot: (target: { type: 'PICK' | 'BAN'; side: 'teamA' | 'teamB'; index: number }) => void;
   onFilterArchetype?: (arch: BrawlerArchetype | 'ALL') => void;
+  onTurnSelect?: (slot: number) => void;
 }
 
 export const DraftBoard: React.FC<Props> = ({
@@ -21,6 +22,7 @@ export const DraftBoard: React.FC<Props> = ({
   onSlotSelect,
   onClearSlot,
   onFilterArchetype,
+  onTurnSelect,
 }) => {
   const isAllyTeamA = session.userSide === 'TEAM_A';
 
@@ -46,37 +48,50 @@ export const DraftBoard: React.FC<Props> = ({
     mode: session.map.mode,
   });
 
-  const currentPickingTeam = getPickTeamForSlot(session.currentSlot);
-  const isCurrentAllyTurn = currentPickingTeam === session.userSide;
+  const currentPickingSide = getPickTeamForSlot(session.currentSlot);
+  const isCurrentAllyTurn = currentPickingSide === session.userSide;
 
-  // Define slots for Team A (1, 4, 5) and Team B (2, 3, 6)
-  const teamASlotDefinitions = [
-    { slotNumber: 1, label: '1st Pick', index: 0 },
-    { slotNumber: 4, label: '4th Pick', index: 1 },
-    { slotNumber: 5, label: '5th Pick', index: 2 },
-  ];
+  // Slot definitions for Clean Left/Right presentation
+  const allySlotDefinitions = isAllyTeamA
+    ? [
+        { label: '1st Pick', slotNumber: 1, index: 0 },
+        { label: '4th Pick', slotNumber: 4, index: 1 },
+        { label: '5th Pick', slotNumber: 5, index: 2 },
+      ]
+    : [
+        { label: '2nd Pick', slotNumber: 2, index: 0 },
+        { label: '3rd Pick', slotNumber: 3, index: 1 },
+        { label: '6th Pick (Last)', slotNumber: 6, index: 2 },
+      ];
 
-  const teamBSlotDefinitions = [
-    { slotNumber: 2, label: '2nd Pick', index: 0 },
-    { slotNumber: 3, label: '3rd Pick', index: 1 },
-    { slotNumber: 6, label: '6th Pick (Last)', index: 2 },
-  ];
-
-  const allySlotDefinitions = isAllyTeamA ? teamASlotDefinitions : teamBSlotDefinitions;
-  const enemySlotDefinitions = isAllyTeamA ? teamBSlotDefinitions : teamASlotDefinitions;
+  const enemySlotDefinitions = isAllyTeamA
+    ? [
+        { label: '2nd Pick', slotNumber: 2, index: 0 },
+        { label: '3rd Pick', slotNumber: 3, index: 1 },
+        { label: '6th Pick (Last)', slotNumber: 6, index: 2 },
+      ]
+    : [
+        { label: '1st Pick', slotNumber: 1, index: 0 },
+        { label: '4th Pick', slotNumber: 4, index: 1 },
+        { label: '5th Pick', slotNumber: 5, index: 2 },
+      ];
 
   return (
-    <div className="bg-gray-900/80 border border-gray-800 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-md">
-      {/* Draft Turn Banner & Instructions */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-800">
+    <div className="space-y-4">
+      {/* Turn Tracker Banner (Pick 1 -> Pick 6 Indicator) */}
+      <div className="bg-gray-900/80 border border-gray-800 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-lg">
         <div className="flex items-center gap-3">
           <div
-            className={`w-3 h-3 rounded-full animate-ping ${
-              isCurrentAllyTurn ? 'bg-blue-400' : 'bg-red-400'
+            className={`w-3.5 h-3.5 rounded-full animate-ping shrink-0 ${
+              session.isComplete
+                ? 'bg-emerald-400'
+                : isCurrentAllyTurn
+                ? 'bg-blue-400'
+                : 'bg-red-400'
             }`}
           />
           <div>
-            <span className="text-sm uppercase font-black tracking-wider text-gray-400">
+            <span className="text-xs uppercase font-black tracking-wider text-gray-300">
               CURRENT TURN:{' '}
               <span
                 className={`font-brawl text-lg tracking-wide ${
@@ -95,39 +110,41 @@ export const DraftBoard: React.FC<Props> = ({
               </span>
             </span>
             <p className="text-[11px] text-gray-500">
-              💡 Tip: Click any pick or ban slot to freely assign, change, or clear brawlers.
+              💡 Tip: Click any turn chip (Pick 1-6) or pick slot below to view recommendations for that turn.
             </p>
           </div>
         </div>
 
         {/* Turn Step Chips: Pick 1 to 6 (Blue = You / Left, Red = Enemy / Right) */}
-        <div className="flex items-center gap-1.5 text-xs font-bold">
+        <div className="flex items-center gap-1.5 text-xs font-bold flex-wrap">
           {[1, 2, 3, 4, 5, 6].map(slot => {
-            const isDone = session.currentSlot > slot || session.isComplete;
+            const isFilled = isSlotFilled(session, slot);
             const isCurrent = session.currentSlot === slot && !session.isComplete;
             const pickingTeam = getPickTeamForSlot(slot as any);
             const isSlotAlly = pickingTeam === session.userSide;
 
             return (
-              <div
+              <button
                 key={slot}
-                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 border ${
+                onClick={() => onTurnSelect?.(slot)}
+                title={`Click to view recommendations for Pick ${slot} (${isSlotAlly ? 'Your Team' : 'Enemy Team'})`}
+                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 border cursor-pointer ${
                   isCurrent
                     ? isSlotAlly
                       ? 'bg-blue-600 text-white ring-2 ring-blue-400 border-blue-400 scale-110 shadow-lg shadow-blue-500/40 font-black'
                       : 'bg-red-600 text-white ring-2 ring-red-400 border-red-400 scale-110 shadow-lg shadow-red-500/40 font-black'
-                    : isDone
+                    : isFilled
                     ? isSlotAlly
-                      ? 'bg-blue-950/40 text-blue-300 border-blue-500/40'
-                      : 'bg-red-950/40 text-red-300 border-red-500/40'
+                      ? 'bg-blue-950/60 text-blue-300 border-blue-500/50 hover:bg-blue-900/40'
+                      : 'bg-red-950/60 text-red-300 border-red-500/50 hover:bg-red-900/40'
                     : isSlotAlly
-                    ? 'bg-blue-950/20 text-blue-400/80 border-blue-500/20'
-                    : 'bg-red-950/20 text-red-400/80 border-red-500/20'
+                    ? 'bg-blue-950/20 text-blue-400/80 border-blue-500/20 hover:bg-blue-900/30'
+                    : 'bg-red-950/20 text-red-400/80 border-red-500/20 hover:bg-red-900/30'
                 }`}
               >
                 <span>Pick {slot}</span>
-                {isDone && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
-              </div>
+                {isFilled && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+              </button>
             );
           })}
         </div>

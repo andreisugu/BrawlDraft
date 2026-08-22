@@ -48,3 +48,41 @@ export function isBrawlerDraftedOrBanned(session: DraftSession, brawlerId: strin
     session.picks.teamB.includes(brawlerId)
   );
 }
+
+export function isSlotFilled(session: DraftSession, slot: number): boolean {
+  switch (slot) {
+    case 1:
+      return Boolean(session.picks.teamA[0]);
+    case 2:
+      return Boolean(session.picks.teamB[0]);
+    case 3:
+      return Boolean(session.picks.teamB[1]);
+    case 4:
+      return Boolean(session.picks.teamA[1]);
+    case 5:
+      return Boolean(session.picks.teamA[2]);
+    case 6:
+      return Boolean(session.picks.teamB[2]);
+    default:
+      return false;
+  }
+}
+
+export function getNextUnfilledSlot(picks: { teamA: string[]; teamB: string[] }): PickSlot {
+  const slotMapping: { slot: PickSlot; side: 'teamA' | 'teamB'; index: number }[] = [
+    { slot: 1, side: 'teamA', index: 0 },
+    { slot: 2, side: 'teamB', index: 0 },
+    { slot: 3, side: 'teamB', index: 1 },
+    { slot: 4, side: 'teamA', index: 1 },
+    { slot: 5, side: 'teamA', index: 2 },
+    { slot: 6, side: 'teamB', index: 2 },
+  ];
+
+  for (const item of slotMapping) {
+    if (!picks[item.side][item.index]) {
+      return item.slot;
+    }
+  }
+  return 6;
+}
+

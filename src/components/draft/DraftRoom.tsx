@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MAPS } from '../../domain/data/maps';
 import { BrawlMap } from '../../domain/models/map';
-import { DraftSession, getAllBannedBrawlers, getAllPickedBrawlers } from '../../domain/models/draftSession';
+import { DraftSession, getAllBannedBrawlers, getAllPickedBrawlers, getNextUnfilledSlot } from '../../domain/models/draftSession';
 import { DraftBoard } from './DraftBoard';
 import { RecommendationsPanel } from './RecommendationsPanel';
 import { BrawlerSelectorModal } from './BrawlerSelectorModal';
@@ -43,6 +43,13 @@ export const DraftRoom: React.FC = () => {
     setSelectedArchetypeFilter(arch);
     const el = document.getElementById('recommendations-panel');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleTurnSelect = (slot: number) => {
+    setSession(prev => ({
+      ...prev,
+      currentSlot: slot as any,
+    }));
   };
 
   const [session, setSession] = useState<DraftSession>({
@@ -116,17 +123,18 @@ export const DraftRoom: React.FC = () => {
           },
         };
       } else {
-        const newPicks = [...prev.picks[target.side]];
-        newPicks.splice(target.index, 1);
-        const totalPicks = newPicks.length + prev.picks[target.side === 'teamA' ? 'teamB' : 'teamA'].length;
+        const newPicks = {
+          teamA: [...prev.picks.teamA],
+          teamB: [...prev.picks.teamB],
+        };
+        newPicks[target.side].splice(target.index, 1);
+        const nextSlot = getNextUnfilledSlot(newPicks);
+        const totalPicks = newPicks.teamA.filter(Boolean).length + newPicks.teamB.filter(Boolean).length;
         return {
           ...prev,
-          picks: {
-            ...prev.picks,
-            [target.side]: newPicks,
-          },
-          currentSlot: Math.min(6, totalPicks + 1) as any,
-          isComplete: false,
+          picks: newPicks,
+          currentSlot: nextSlot,
+          isComplete: totalPicks >= 6,
         };
       }
     });
@@ -145,13 +153,17 @@ export const DraftRoom: React.FC = () => {
             bans: { ...prev.bans, [selectedTargetSlot.side]: bans },
           };
         } else {
-          const picks = [...prev.picks[selectedTargetSlot.side]];
-          picks[selectedTargetSlot.index] = brawlerId;
-          const totalPicks = picks.filter(Boolean).length + prev.picks[selectedTargetSlot.side === 'teamA' ? 'teamB' : 'teamA'].filter(Boolean).length;
+          const newPicks = {
+            teamA: [...prev.picks.teamA],
+            teamB: [...prev.picks.teamB],
+          };
+          newPicks[selectedTargetSlot.side][selectedTargetSlot.index] = brawlerId;
+          const nextSlot = getNextUnfilledSlot(newPicks);
+          const totalPicks = newPicks.teamA.filter(Boolean).length + newPicks.teamB.filter(Boolean).length;
           return {
             ...prev,
-            picks: { ...prev.picks, [selectedTargetSlot.side]: picks },
-            currentSlot: Math.min(6, totalPicks + 1) as any,
+            picks: newPicks,
+            currentSlot: nextSlot,
             isComplete: totalPicks >= 6,
           };
         }
@@ -175,17 +187,19 @@ export const DraftRoom: React.FC = () => {
         // Sequential pick (Slot 1 -> Slot 6)
         if (prev.isComplete) return prev;
         const pickingSide = prev.currentSlot === 1 || prev.currentSlot === 4 || prev.currentSlot === 5 ? 'teamA' : 'teamB';
-        const nextSlot = (prev.currentSlot + 1) as any;
-        const isComplete = prev.currentSlot === 6;
+        const newPicks = {
+          teamA: [...prev.picks.teamA],
+          teamB: [...prev.picks.teamB],
+        };
+        newPicks[pickingSide] = [...newPicks[pickingSide], brawlerId];
+        const nextSlot = getNextUnfilledSlot(newPicks);
+        const totalPicks = newPicks.teamA.filter(Boolean).length + newPicks.teamB.filter(Boolean).length;
 
         return {
           ...prev,
-          picks: {
-            ...prev.picks,
-            [pickingSide]: [...prev.picks[pickingSide], brawlerId],
-          },
-          currentSlot: isComplete ? 6 : nextSlot,
-          isComplete,
+          picks: newPicks,
+          currentSlot: nextSlot,
+          isComplete: totalPicks >= 6,
         };
       }
 
@@ -335,6 +349,7 @@ export const DraftRoom: React.FC = () => {
         onSlotSelect={handleSlotSelect}
         onClearSlot={handleClearSlot}
         onFilterArchetype={handleFilterArchetype}
+        onTurnSelect={handleTurnSelect}
       />
 
       {/* Real-time Recommendations Panel driven by Role Deductions */}
@@ -346,6 +361,7 @@ export const DraftRoom: React.FC = () => {
         onOpenPoolModal={() => setPoolModalOpen(true)}
         onFilterChange={setSelectedArchetypeFilter}
         onToggleSkipBans={() => setSkipBans(!skipBans)}
+        onTurnSelect={handleTurnSelect}
         onSelectBrawler={handleSelectBrawlerId}
       />
 

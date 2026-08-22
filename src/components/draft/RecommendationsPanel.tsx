@@ -31,6 +31,7 @@ interface Props {
   onOpenPoolModal?: () => void;
   onFilterChange?: (arch: BrawlerArchetype | 'ALL') => void;
   onToggleSkipBans?: () => void;
+  onTurnSelect?: (slot: number) => void;
   onSelectBrawler: (brawlerId: string) => void;
 }
 
@@ -42,6 +43,7 @@ export const RecommendationsPanel: React.FC<Props> = ({
   onOpenPoolModal,
   onFilterChange,
   onToggleSkipBans,
+  onTurnSelect,
   onSelectBrawler,
 }) => {
   const isComplete = session.isComplete || (session.picks.teamA.filter(Boolean).length === 3 && session.picks.teamB.filter(Boolean).length === 3);
@@ -71,6 +73,13 @@ export const RecommendationsPanel: React.FC<Props> = ({
   const currentPickingSide = getPickTeamForSlot(session.currentSlot);
   const isAllyTurn = currentPickingSide === session.userSide;
 
+  // Find first unpicked ally slot
+  const allySlots = isAllyTeamA ? [1, 4, 5] : [2, 3, 6];
+  const firstUnpickedAllySlot = allySlots.find(s => {
+    const slotIdx = isAllyTeamA ? (s === 1 ? 0 : s === 4 ? 1 : 2) : (s === 2 ? 0 : s === 3 ? 1 : 2);
+    return !(isAllyTeamA ? session.picks.teamA : session.picks.teamB)[slotIdx];
+  });
+
   // Preferred Brawler Pool picks (for ally turns)
   const poolRecs =
     isAllyTurn && preferredBrawlerIds.length > 0
@@ -79,6 +88,39 @@ export const RecommendationsPanel: React.FC<Props> = ({
 
   return (
     <div id="recommendations-panel" className="bg-gray-900/90 border border-gray-800 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-md space-y-6">
+      {/* Opponent Predictor Notice Banner */}
+      {!isComplete && !isBanPhase && !isAllyTurn && (
+        <div className="bg-red-950/40 border border-red-500/50 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-red-950/20">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 shrink-0">
+              <Eye className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-black uppercase tracking-wider">
+                  OPPONENT'S TURN
+                </span>
+                <h4 className="font-brawl text-red-300 text-base">
+                  Predicting Opponent's Pick for Slot {session.currentSlot}
+                </h4>
+              </div>
+              <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                The brawlers below are what the <strong className="text-red-400">Opponent is expected to pick</strong> against your team.
+              </p>
+            </div>
+          </div>
+
+          {firstUnpickedAllySlot && onTurnSelect && (
+            <button
+              onClick={() => onTurnSelect(firstUnpickedAllySlot)}
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-brawl text-xs uppercase tracking-wider transition-all shadow-lg shadow-blue-600/30 shrink-0 self-start sm:self-auto cursor-pointer flex items-center gap-1.5 active:scale-95"
+            >
+              <span>View Your Pick {firstUnpickedAllySlot} Recommendations →</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-800">
         <div>
