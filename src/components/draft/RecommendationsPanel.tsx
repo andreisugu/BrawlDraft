@@ -1,6 +1,7 @@
 import React from 'react';
 import { DraftSession, getPickTeamForSlot } from '../../domain/models/draftSession';
 import { DraftEngine, PickRecommendation, BanRecommendation } from '../../domain/engine/draftEngine';
+import { VectorEngine } from '../../domain/engine/vectorEngine';
 import { BrawlerAvatar, ARCHETYPE_ICONS, BOBBY_COLOR_STYLES } from '../common/BrawlerAvatar';
 import { BrawlerArchetype } from '../../domain/models/types';
 import { BRAWLER_MAP } from '../../domain/data/brawlers';
@@ -21,6 +22,7 @@ import {
   Eye,
   Users,
   Star,
+  Sparkles,
 } from 'lucide-react';
 
 interface Props {
@@ -63,13 +65,11 @@ export const RecommendationsPanel: React.FC<Props> = ({
   const isAllyTeamA = session.userSide === 'TEAM_A';
   const allyBrawlers = (isAllyTeamA ? session.picks.teamA : session.picks.teamB).map(id => BRAWLER_MAP[id]).filter(Boolean);
   const enemyBrawlers = (isAllyTeamA ? session.picks.teamB : session.picks.teamA).map(id => BRAWLER_MAP[id]).filter(Boolean);
-
-  const allyAnalysis = DraftEngine.evaluateComp(allyBrawlers, { isFirstPickTeam: isAllyTeamA, currentSlot: 6, isAlly: true, enemyBrawlers, mode: session.map.mode });
-  const enemyAnalysis = DraftEngine.evaluateComp(enemyBrawlers, { isFirstPickTeam: !isAllyTeamA, currentSlot: 6, isAlly: false, enemyBrawlers: allyBrawlers, mode: session.map.mode });
+  const delta = isComplete ? VectorEngine.computeDelta(allyBrawlers, enemyBrawlers, session.map) : null;
 
   // Intelligent Lane Allocations preventing suicide matchups
-  const optimalLanes = isComplete ? DraftEngine.calculateOptimalLanes(allyBrawlers, enemyBrawlers) : [];
-  const macroPlaybook = isComplete ? DraftEngine.generateMacroPlaybook(allyBrawlers, enemyBrawlers, optimalLanes) : null;
+  const optimalLanes = delta ? delta.laneMatchups : [];
+  const macroPlaybook = delta ? delta.macroPlaybook : null;
 
   // Current turn side
   const currentPickingSide = getPickTeamForSlot(session.currentSlot);
@@ -218,7 +218,7 @@ export const RecommendationsPanel: React.FC<Props> = ({
       {/* =========================================================
           POST-DRAFT IN-GAME PLAYBOOK (Shown when 6 picks complete)
           ========================================================= */}
-      {isComplete && (
+      {isComplete && delta && (
         <div className="space-y-6">
           {/* Tactical Overview Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -228,32 +228,19 @@ export const RecommendationsPanel: React.FC<Props> = ({
                 <Swords className="w-4 h-4 text-blue-400" />
                 <span>YOUR WIN CONDITION</span>
               </div>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                {(() => {
-                  const hasAllySniper = allyBrawlers.some(b => b.archetype === 'SNIPER');
-                  const hasAllyTank = allyBrawlers.some(b => b.archetype === 'TANK');
-                  const hasAllySpace = allyBrawlers.some(b => b.archetype === 'SPACE_MAKER');
-                  const hasAllyAntiTank = allyBrawlers.some(b => b.archetype === 'ANTI_TANK');
-                  const hasAllyThrower = allyBrawlers.some(b => b.archetype === 'THROWER');
-
-                  if (hasAllySniper && !hasAllyTank && !hasAllySpace) {
-                    return `Execute your Long-Range Poke & Pick strategy. Anchor the mid-zone with ${optimalLanes[0]?.ally?.name || 'your mid'} to control spacing, while your snipers tag targets and apply oppressive pressure from maximum distance.`;
-                  } else if (hasAllyTank && hasAllySpace) {
-                    return `Execute your Heavy Aggro & Overrun strategy. Close distance aggressively and collapse onto enemy squishies with your HP advantage.`;
-                  } else if (hasAllyThrower) {
-                    return `Execute your Indirect Wall Artillery strategy. Control key chokepoints and rain damage over walls while side-duelists prevent flanking.`;
-                  } else if (hasAllyAntiTank && hasAllySpace) {
-                    return `Execute your Anti-Tank + Space Maker core. Anchor the mid-zone while your side-duelists create flanking pressure.`;
-                  } else {
-                    return `Maintain disciplined lane spacing. Anchor the mid-zone with ${optimalLanes[0]?.ally?.name || 'your mid'} while side lanes apply pinch pressure.`;
-                  }
-                })()}
-              </p>
-              <div className="space-y-1">
-                {allyAnalysis.strengths.map((str, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-[11px] text-emerald-300">
-                    <Check className="w-3 h-3 text-emerald-400 shrink-0" />
-                    <span>{str}</span>
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-bold text-yellow-400 font-brawl">
+                  {delta.primaryAllyWinCondition.title}
+                </h4>
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  {delta.primaryAllyWinCondition.tacticalSummary}
+                </p>
+              </div>
+              <div className="space-y-1 pt-1">
+                {delta.primaryAllyWinCondition.bulletPoints.map((pt, i) => (
+                  <div key={i} className="flex items-start gap-1.5 text-[11px] text-emerald-300">
+                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>{pt}</span>
                   </div>
                 ))}
               </div>
@@ -265,41 +252,32 @@ export const RecommendationsPanel: React.FC<Props> = ({
                 <AlertTriangle className="w-4 h-4 text-red-400" />
                 <span>ENEMY THREAT ASSESSMENT</span>
               </div>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                {(() => {
-                  const hasEnemySniper = enemyBrawlers.some(b => b.archetype === 'SNIPER');
-                  const hasEnemyTank = enemyBrawlers.some(b => b.archetype === 'TANK');
-                  const hasEnemySpace = enemyBrawlers.some(b => b.archetype === 'SPACE_MAKER');
-                  const hasEnemyThrower = enemyBrawlers.some(b => b.archetype === 'THROWER');
-
-                  if (hasEnemySpace) {
-                    return 'Watch for enemy aggressive dives. Keep vision on bushes and collapse as a 3-man unit when divers jump in.';
-                  } else if (hasEnemySniper && !hasEnemyTank) {
-                    return 'Enemy excels at long-range poke and burst. Use walls to close distance and avoid peeking straight lines against sniper sightlines.';
-                  } else if (hasEnemyTank) {
-                    return 'Enemy has heavy frontline bulk. Maintain distance, kite their approach, and focus fire before they reach the objective.';
-                  } else if (hasEnemyThrower) {
-                    return 'Enemy relies on indirect artillery behind walls. Push your side lanes aggressively to dismantle their wall cover.';
-                  } else {
-                    return 'Respect enemy spacing and super charge timing. Avoid getting caught in 2v1 pinches.';
-                  }
-                })()}
-              </p>
-              <div className="space-y-1">
-                {enemyAnalysis.strengths.map((str, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-[11px] text-red-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                    <span>{str}</span>
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-bold text-red-300 font-brawl">
+                  {delta.primaryEnemyThreat.title}
+                </h4>
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  {delta.primaryEnemyThreat.threatSummary}
+                </p>
+              </div>
+              <div className="space-y-1 pt-1">
+                {delta.primaryEnemyThreat.counterTactics.map((tac, i) => (
+                  <div key={i} className="flex items-start gap-1.5 text-[11px] text-amber-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 mt-1.5" />
+                    <span>{tac}</span>
                   </div>
                 ))}
               </div>
-              {enemyAnalysis.vulnerabilities.length > 0 && (
-                <div className="pt-2 border-t border-red-500/20 space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-amber-400">Exploitable Enemy Flaws:</span>
-                  {enemyAnalysis.vulnerabilities.map((vuln, i) => (
-                    <div key={i} className="flex items-center gap-1.5 text-[11px] text-amber-300">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                      <span>{vuln}</span>
+              {delta.exploitableEnemyFlaws.length > 0 && (
+                <div className="pt-2 border-t border-red-500/20 space-y-1.5">
+                  <span className="text-[10px] uppercase font-black text-yellow-400 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-yellow-400" />
+                    Exploitable Enemy Flaws:
+                  </span>
+                  {delta.exploitableEnemyFlaws.map(flaw => (
+                    <div key={flaw.id} className="text-[11px] text-amber-200 bg-amber-950/30 p-2 rounded-lg border border-amber-500/20">
+                      <span className="font-bold text-amber-300 block mb-0.5">{flaw.title}</span>
+                      <span className="text-[10px] text-gray-300">{flaw.description}</span>
                     </div>
                   ))}
                 </div>
