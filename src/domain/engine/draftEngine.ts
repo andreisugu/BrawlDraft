@@ -86,6 +86,7 @@ export class DraftEngine {
     let hasSpaceMakerOrTank = false;
     let hasDamageDealer = false;
     let hasSupport = false;
+    let hasSniper = false;
 
     brawlers.forEach(b => {
       archetypeCounts[b.archetype] = (archetypeCounts[b.archetype] || 0) + 1;
@@ -93,6 +94,7 @@ export class DraftEngine {
       if (b.archetype === 'SPACE_MAKER' || b.archetype === 'TANK') hasSpaceMakerOrTank = true;
       if (b.burstDamage >= 8) hasDamageDealer = true;
       if (b.archetype === 'SUPPORT') hasSupport = true;
+      if (b.archetype === 'SNIPER') hasSniper = true;
     });
 
     const burstScore = brawlers.reduce((sum, b) => sum + b.burstDamage, 0);
@@ -131,11 +133,21 @@ export class DraftEngine {
 
         if (hasSpaceMakerOrTank) {
           strengths.push('Space Maker / Dive secured: Denies enemy free Thrower / Sniper abuse.');
-        } else if (!hasSpaceMakerOrTank && enemyB.some(b => b.archetype === 'THROWER' || b.archetype === 'SNIPER')) {
-          vulnerabilities.push(`No Dive: Struggles to reach enemy ${enemyB.filter(b => b.archetype === 'THROWER' || b.archetype === 'SNIPER').map(b => b.name).join('/')}.`);
+        } else {
+          const enemyThrowers = enemyB.filter(b => b.archetype === 'THROWER');
+          const enemySnipers = enemyB.filter(b => b.archetype === 'SNIPER');
+          if (enemyThrowers.length > 0) {
+            vulnerabilities.push(`No Dive / Wall-Breaker: Vulnerable to indirect wall artillery from ${enemyThrowers.map(b => b.name).join('/')}.`);
+          } else if (enemySnipers.length > 0 && !hasSniper && brawlers.every(b => (b.modeScores?.BOUNTY || 50) < 70)) {
+            vulnerabilities.push(`Outranged: Lacks long-range poke or dive to contest ${enemySnipers.map(b => b.name).join('/')}.`);
+          }
         }
 
-        if (!hasDamageDealer && enemyB.some(b => b.health >= 8000)) {
+        if (hasSniper) {
+          strengths.push('Long-Range Marksman reach controls sightlines.');
+        }
+
+        if (!hasDamageDealer && enemyB.some(b => b.archetype === 'TANK' || b.id === 'frank' || b.id === 'draco' || b.id === 'buster' || b.id === 'meg' || b.id === 'bull')) {
           vulnerabilities.push('Low Burst DPS against enemy high-HP frontline.');
         }
       } else {
@@ -1016,14 +1028,15 @@ export class DraftEngine {
     enemyBrawlers: Brawler[],
     laneMatchups: LaneMatchup[]
   ): MacroPlaybook {
-    // 1. Identify Priority Pinch Target (Throwers on closed maps, Snipers on open maps, or Assassin threats)
+    // 1. Identify Priority Pinch Target (Throwers on closed maps, Snipers on open maps, Tanks, or Assassin threats)
     let priorityTarget: Brawler | null = null;
     let pinchReason = '';
     let pinchInstructions = '';
 
     const enemyThrower = enemyBrawlers.find(b => b.archetype === 'THROWER');
-    const enemySniper = enemyBrawlers.find(b => b.archetype === 'SNIPER' && b.tier === 'S');
-    const enemyAssassin = enemyBrawlers.find(b => b.id === 'edgar' || b.id === 'mortis' || b.id === 'mico' || b.id === 'kenji' || b.id === 'lily' || b.id === 'bolt');
+    const enemySniper = enemyBrawlers.find(b => b.archetype === 'SNIPER');
+    const enemyAssassin = enemyBrawlers.find(b => b.archetype === 'SPACE_MAKER' || b.id === 'edgar' || b.id === 'mortis' || b.id === 'mico' || b.id === 'kenji' || b.id === 'lily' || b.id === 'bolt');
+    const enemyTank = enemyBrawlers.find(b => b.archetype === 'TANK');
 
     if (enemyThrower) {
       priorityTarget = enemyThrower;
@@ -1031,12 +1044,16 @@ export class DraftEngine {
       pinchInstructions = `Win your side lane, then immediately rotate inward to 2v1 pinch ${enemyThrower.name} from two separate angles. Shooting from two directions denies their wall cover.`;
     } else if (enemySniper) {
       priorityTarget = enemySniper;
-      pinchReason = `${enemySniper.name} locks down long sightlines.`;
-      pinchInstructions = `Collapse with your Space Maker or rotate from side lanes to pinch ${enemySniper.name} before they charge Super.`;
+      pinchReason = `${enemySniper.name} locks down long sightlines and deals lethal burst from afar.`;
+      pinchInstructions = `Coordinate with your teammates to pinch ${enemySniper.name} from multiple angles and deny their long sightlines.`;
     } else if (enemyAssassin) {
       priorityTarget = enemyAssassin;
       pinchReason = `${enemyAssassin.name} looks for isolated targets to charge Super and start a snowball.`;
       pinchInstructions = `Maintain visual on bushes. When ${enemyAssassin.name} dives, both nearby teammates must immediately pinch and burst them down.`;
+    } else if (enemyTank) {
+      priorityTarget = enemyTank;
+      pinchReason = `${enemyTank.name} has massive HP and pushes objectives with sheer bulk.`;
+      pinchInstructions = `Focus fire from multiple angles. Maintain distance and kite to burst ${enemyTank.name} before they close distance.`;
     } else if (enemyBrawlers.length > 0) {
       priorityTarget = enemyBrawlers[0];
       pinchReason = `Primary enemy anchor on this map.`;
