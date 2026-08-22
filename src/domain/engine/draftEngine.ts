@@ -119,26 +119,45 @@ export class DraftEngine {
     const enemyB = context?.enemyBrawlers || [];
     const enemyHasSpace = enemyB.some(b => b.archetype === 'SPACE_MAKER' || b.archetype === 'TANK');
     const enemyHasAntiTank = enemyB.some(b => b.archetype === 'ANTI_TANK');
+    const isAllEnemyKnown = enemyB.length === 3;
 
     if (brawlers.length >= 1 || currentSlot >= 4) {
-      if (!hasAntiTank) {
-        vulnerabilities.push('No Anti-Tank: Vulnerable to aggressive Tanks and Space Makers.');
+      if (isAllEnemyKnown) {
+        if (!hasAntiTank && (enemyHasSpace || enemyB.some(b => b.archetype === 'TANK'))) {
+          vulnerabilities.push(`No Anti-Tank: Vulnerable to enemy ${enemyB.filter(b => b.archetype === 'TANK' || b.archetype === 'SPACE_MAKER').map(b => b.name).join('/')}.`);
+        } else if (hasAntiTank) {
+          strengths.push('Solid Anti-Tank foundation shuts down aggressive dives.');
+        }
+
+        if (hasSpaceMakerOrTank) {
+          strengths.push('Space Maker / Dive secured: Denies enemy free Thrower / Sniper abuse.');
+        } else if (!hasSpaceMakerOrTank && enemyB.some(b => b.archetype === 'THROWER' || b.archetype === 'SNIPER')) {
+          vulnerabilities.push(`No Dive: Struggles to reach enemy ${enemyB.filter(b => b.archetype === 'THROWER' || b.archetype === 'SNIPER').map(b => b.name).join('/')}.`);
+        }
+
+        if (!hasDamageDealer && enemyB.some(b => b.health >= 8000)) {
+          vulnerabilities.push('Low Burst DPS against enemy high-HP frontline.');
+        }
       } else {
-        strengths.push('Solid Anti-Tank foundation shuts down aggressive dives.');
-      }
+        if (!hasAntiTank) {
+          vulnerabilities.push('No Anti-Tank: Vulnerable to aggressive Tanks and Space Makers.');
+        } else {
+          strengths.push('Solid Anti-Tank foundation shuts down aggressive dives.');
+        }
 
-      if (hasSpaceMakerOrTank) {
-        strengths.push('Space Maker / Dive secured: Denies enemy free Thrower / Sniper abuse.');
-      }
+        if (hasSpaceMakerOrTank) {
+          strengths.push('Space Maker / Dive secured: Denies enemy free Thrower / Sniper abuse.');
+        }
 
-      if (isFirstPickTeam && !hasSpaceMakerOrTank && currentSlot >= 4) {
-        vulnerabilities.push('No Space Maker: Leaves your team open to free enemy last-pick Throwers/Snipers.');
-      } else if (!isFirstPickTeam && !hasSpaceMakerOrTank && brawlers.length >= 2) {
-        vulnerabilities.push('Low Aggro Threat: May struggle to dive and pressure long-range backliners.');
-      }
+        if (isFirstPickTeam && !hasSpaceMakerOrTank && currentSlot >= 4) {
+          vulnerabilities.push('No Space Maker: Leaves your team open to free enemy last-pick Throwers/Snipers.');
+        } else if (!isFirstPickTeam && !hasSpaceMakerOrTank && brawlers.length >= 2) {
+          vulnerabilities.push('Low Aggro Threat: May struggle to dive and pressure long-range backliners.');
+        }
 
-      if (!hasDamageDealer && brawlers.length >= 2) {
-        vulnerabilities.push('Low Burst DPS: High-HP Tanks can stat-check and walk through your team.');
+        if (!hasDamageDealer && brawlers.length >= 2) {
+          vulnerabilities.push('Low Burst DPS: High-HP Tanks can stat-check and walk through your team.');
+        }
       }
     }
 
@@ -155,7 +174,35 @@ export class DraftEngine {
       SUPPORT: { score: 0, priority: 'MEDIUM', reason: 'Team healing and speed sustain' },
     };
 
-    if (brawlers.length === 0) {
+    if (brawlers.length === 3) {
+      compSummary = 'Full 3v3 team drafted.';
+    } else if (isAllEnemyKnown) {
+      // Complete Enemy Information: Pure Counter-Picking Mode
+      if (!enemyHasAntiTank) {
+        roleScores.TANK = { score: 100, priority: 'CRITICAL', reason: '1st Priority: Heavy Tank stat-checks enemy zero Anti-Tank lineup' };
+        roleScores.SPACE_MAKER = { score: 95, priority: 'CRITICAL', reason: '2nd Priority: Space Maker dive overruns low-burst squishies' };
+        if (!enemyHasSpace) {
+          roleScores.THROWER = { score: 90, priority: 'HIGH', reason: '3rd Priority: Untouchable Thrower abuse over walls' };
+        }
+        compSummary = 'Direct Counter Mode: Exploit enemy zero Anti-Tank draft with Heavy Tanks and Space Makers.';
+      } else if (!enemyHasSpace) {
+        roleScores.THROWER = { score: 100, priority: 'CRITICAL', reason: '1st Priority: Untouchable Thrower abuse against zero dive threats' };
+        roleScores.SNIPER = { score: 90, priority: 'HIGH', reason: '2nd Priority: Uncontested long-range sniper' };
+        roleScores.CONTROL = { score: 75, priority: 'MEDIUM', reason: '3rd Priority: Zone lockdown' };
+        compSummary = 'Direct Counter Mode: Exploit enemy zero dive draft with Throwers and Snipers.';
+      } else {
+        if (context?.mode === 'HEIST') {
+          roleScores.THROWER = { score: 95, priority: 'HIGH', reason: '1st Priority: Top safe melters (Chuck, Berry, Dynamike)' };
+          roleScores.CONTROL = { score: 85, priority: 'HIGH', reason: '2nd Priority: Area denial and wall control' };
+          roleScores.ANTI_TANK = { score: 70, priority: 'MEDIUM', reason: '3rd Priority: Additional burst shred' };
+        } else {
+          roleScores.CONTROL = { score: 95, priority: 'HIGH', reason: '1st Priority: Mid zone control and choke lockdown' };
+          roleScores.ANTI_TANK = { score: 85, priority: 'HIGH', reason: '2nd Priority: Hard CC & Anti-Dive stabilization' };
+          roleScores.SUPPORT = { score: 70, priority: 'MEDIUM', reason: '3rd Priority: Team sustain' };
+        }
+        compSummary = 'Direct Counter Mode: Hard-countering enemy 3v3 composition.';
+      }
+    } else if (brawlers.length === 0) {
       if (context?.mode === 'BOUNTY' || context?.mode === 'KNOCKOUT') {
         roleScores.SNIPER = { score: 95, priority: 'CRITICAL', reason: '1st Priority: S-tier Sniper anchor on long-range map' };
         roleScores.ANTI_TANK = { score: 80, priority: 'HIGH', reason: '2nd Priority: Anti-Dive insurance' };
@@ -251,8 +298,6 @@ export class DraftEngine {
         roleScores.TANK = { score: 75, priority: 'MEDIUM', reason: '2nd Priority: Frontline HP' };
         compSummary = 'Next: Add Zone Control or frontline durability.';
       }
-    } else {
-      compSummary = 'Full 3v3 team drafted.';
     }
 
     const rankedNeeds: RankedArchetypeNeed[] = Object.entries(roleScores)
@@ -286,6 +331,9 @@ export class DraftEngine {
 
   public static getDeductions(session: DraftSession): DraftDeduction[] {
     const pickingSide = getPickTeamForSlot(session.currentSlot);
+    const isAllyTurn = pickingSide === session.userSide;
+    const teamLabel = isAllyTurn ? 'Your team' : 'The opponent';
+
     const allyPickedIds = pickingSide === 'TEAM_A' ? session.picks.teamA : session.picks.teamB;
     const enemyPickedIds = pickingSide === 'TEAM_A' ? session.picks.teamB : session.picks.teamA;
 
@@ -297,179 +345,274 @@ export class DraftEngine {
     const macroMeta = getMacroMeta(session.map.mode);
 
     const deductions: DraftDeduction[] = [];
-
-    if (session.currentSlot === 1 && macroMeta === 'AGGRO') {
-      deductions.push({
-        id: 'first_pick_antitank',
-        targetArchetypes: ['ANTI_TANK'],
-        title: 'Draft Rule #1: First Pick Best Available Anti-Tank',
-        reason: 'In aggro modes (Brawl Ball, Hot Zone, Gem Grab, Heist), the #1 first pick is ALWAYS the best available Anti-Tank (Crow, Lou, Otis, Chester, Clancy). It prevents the enemy from playing aggressive space makers.',
-        priority: 'CRITICAL',
-        icon: '⚡',
-      });
-    }
-
-    if (macroMeta === 'AGGRO' && !allyComp.hasAntiTank && session.currentSlot > 1 && session.currentSlot < 6) {
-      deductions.push({
-        id: 'missing_antitank',
-        targetArchetypes: ['ANTI_TANK'],
-        title: 'Mandatory Fix: Secure an Anti-Tank Backbone',
-        reason: 'Your team currently has NO Anti-Tank. Without an Anti-Tank, the enemy will draft aggressive Tanks and Space Makers and run you down.',
-        priority: 'CRITICAL',
-        icon: '🛡️',
-      });
-    }
-
-    if ((session.currentSlot === 4 || session.currentSlot === 5) && !allyComp.hasSpaceMakerOrTank) {
-      deductions.push({
-        id: 'spacemaker_lockout',
-        targetArchetypes: ['SPACE_MAKER'],
-        title: 'Space Maker Lockout: Deny Enemy Free Last Pick',
-        reason: 'Your team currently has NO Space Maker or aggressive dive threat. In Slot 4/5, you MUST draft a Space Maker (Kenji, Kaze, Ollie, Bull, Mortis, Lily, Shade) to prevent the enemy from having a free, uncontested 6th pick Thrower or Sniper.',
-        priority: 'CRITICAL',
-        icon: '✨',
-      });
-    }
-
-    if (session.currentSlot === 5 && allyComp.hasAntiTank && allyComp.hasSpaceMakerOrTank) {
-      if (!enemyComp.hasSpaceMakerOrTank) {
-        deductions.push({
-          id: 'preempt_enemy_dive',
-          targetArchetypes: ['CONTROL', 'ANTI_TANK'],
-          title: '🔮 Preempt Enemy 6th Pick: Anti-Dive & Zone Control',
-          reason: 'Enemy comp lacks dive/space and desperately needs a Space Maker or Tank on 6th pick. Lock in Hard CC / Zone Lockdown (Lumi, Otis, Surge, Gale, Nori, Naija) to preemptively render their last pick ineffective.',
-          priority: 'HIGH',
-          icon: '🔮',
-        });
-      } else if (!enemyComp.hasAntiTank) {
-        deductions.push({
-          id: 'preempt_enemy_tank',
-          targetArchetypes: ['ANTI_TANK', 'CONTROL'],
-          title: '🔮 Preempt Enemy 6th Pick: Heavy Tank Shredder',
-          reason: 'Enemy lacks anti-tank and may try to 6th-pick a heavy Tank (Frank/Draco). Lock in tank shredding control (Colette, Clancy, Chester, Griff) to permanently deny that win condition.',
-          priority: 'HIGH',
-          icon: '🔮',
-        });
-      } else {
-        if (session.map.mode === 'HEIST') {
-          deductions.push({
-            id: 'heist_safe_race',
-            targetArchetypes: ['THROWER', 'CONTROL', 'ANTI_TANK'],
-            title: '🎯 Heist Safe Melters & Wall Control',
-            reason: 'Both sides have Anti-Tank + Space Maker. Lock in top Heist safe melters and wall controllers (Chuck, Berry, Dynamike, Clancy, Lumi, Crow) to win the race.',
-            priority: 'HIGH',
-            icon: '🎯',
-          });
-        } else {
-          deductions.push({
-            id: 'comp_rounding',
-            targetArchetypes: ['CONTROL', 'SUPPORT', 'ANTI_TANK'],
-            title: '👑 S-Tier Comp Rounding & Mid Lockdown',
-            reason: 'Both sides have Anti-Tank + Space Maker. Lock in dominant controllers or support (Wendy, Lumi, Crow, Otis, Naija) to control mid-map.',
-            priority: 'HIGH',
-            icon: '👑',
-          });
-        }
-      }
-    }
+    const isAllEnemyKnown = enemyBrawlers.length === 3;
 
     const enemySquishies = enemyBrawlers.filter(
       e => e.archetype === 'SNIPER' || e.archetype === 'THROWER' || (e.archetype === 'CONTROL' && e.burstDamage <= 6)
     );
-    if (!allyComp.hasSpaceMakerOrTank && (enemySquishies.length >= 1 || (enemyComp.burstRating < 65 && enemyBrawlers.length >= 1))) {
-      if (!deductions.some(d => d.id === 'spacemaker_lockout')) {
+    const heavyTankShredders = ['colette', 'chester', 'clancy', 'crow', 'otis'];
+    const enemyHasHeavyShredder = enemyBrawlers.some(e => heavyTankShredders.includes(e.id));
+
+    if (isAllEnemyKnown) {
+      // =========================================================================
+      // COMPLETE ENEMY INFORMATION: PURE DIRECT COUNTER-PICKING & EXPLOIT MODE
+      // =========================================================================
+
+      // 1. Exploit: Enemy Lacks Anti-Tank (Heavy Tank / Aggro Overrun)
+      if (!enemyComp.hasAntiTank) {
         deductions.push({
-          id: 'spacemaker_punish',
+          id: 'exploit_no_antitank',
+          targetArchetypes: ['TANK', 'SPACE_MAKER'],
+          title: '💥 100% Win Condition: Heavy Tank / Stat-Check Overrun',
+          reason: `The opponent drafted ZERO Anti-Tanks (${enemyBrawlers.map(b => b.name).join(', ')}). They have no burst shred or CC. Lock in a Heavy Tank (Draco, Frank, Buster, Meg, Bull) or aggressive Space Maker (Kenji, Kaze, Nori, Bolt) to stat-check them and walk uncontested onto the objectives.`,
+          priority: 'CRITICAL',
+          icon: '🧱',
+        });
+      }
+
+      // 2. Exploit: Enemy Lacks Space Maker / Dive (Free Thrower / Sniper Abuse)
+      if (!enemyComp.hasSpaceMakerOrTank) {
+        deductions.push({
+          id: 'exploit_no_spacemaker',
+          targetArchetypes: ['THROWER', 'SNIPER'],
+          title: '💣 100% Win Condition: Untouchable Thrower / Sniper Artillery',
+          reason: `The opponent drafted ZERO Space Makers or dive threats (${enemyBrawlers.map(b => b.name).join(', ')}). A Thrower (Dynamike, Berry, Larry, Sirius, Tick, Sprout, Grom, Barley) or long-range Sniper is 100% untouchable behind walls and gets free infinite value.`,
+          priority: 'CRITICAL',
+          icon: '💣',
+        });
+      }
+
+      // 3. Exploit: Enemy Has Multiple Low-Burst Squishies
+      if (enemySquishies.length >= 2 || (enemyComp.burstRating < 65 && !enemyComp.hasAntiTank)) {
+        if (!deductions.some(d => d.id === 'exploit_no_antitank')) {
+          deductions.push({
+            id: 'exploit_low_dps_squishies',
+            targetArchetypes: ['SPACE_MAKER', 'TANK'],
+            title: '✨ Direct Counter: Space Maker Dive / Tank Overrun',
+            reason: `Enemy lineup consists of low-burst squishies (${enemySquishies.map(b => b.name).join(', ')}). Space Makers (Kenji, Kaze, Nori, Bolt, Ollie) or high-HP Tanks easily close distance and delete them.`,
+            priority: 'CRITICAL',
+            icon: '✨',
+          });
+        }
+      }
+
+      // 4. Counter: Enemy Has Heavy Tanks / Divers (Hard CC Lockdown)
+      if (enemyBrawlers.some(b => b.archetype === 'TANK' || b.archetype === 'SPACE_MAKER')) {
+        deductions.push({
+          id: 'exploit_enemy_dive_tanks',
+          targetArchetypes: ['ANTI_TANK'],
+          title: '🛡️ Direct Counter: Anti-Tank / Hard CC Lockdown',
+          reason: `Enemy relies on aggressive dive/tanks (${enemyBrawlers.filter(b => b.archetype === 'TANK' || b.archetype === 'SPACE_MAKER').map(b => b.name).join(', ')}). Anti-Tanks with Hard CC (Otis, Gale, Colette, Clancy, Chester, Surge, Lumi) shut down their dive on sight.`,
+          priority: 'CRITICAL',
+          icon: '🛡️',
+        });
+      }
+
+      // 5. Counter: Enemy Has Throwers Behind Walls
+      if (enemyBrawlers.some(b => b.archetype === 'THROWER')) {
+        deductions.push({
+          id: 'exploit_enemy_throwers',
           targetArchetypes: ['SPACE_MAKER'],
-          title: 'Space Maker Deduction: Punish Low DPS & Dive Squishies',
-          reason: `Enemy drafted ${enemySquishies.length} squishy/low-burst brawlers. A Space Maker closes distance with dashes/jumps, forces 2+ enemies to peel, and locks out enemy free throwers.`,
+          title: '⚡ Direct Counter: High-Mobility Thrower Hunter',
+          reason: `Enemy relies on ${enemyBrawlers.filter(b => b.archetype === 'THROWER').map(b => b.name).join(', ')}. Fast Space Makers (Kenji, Kaze, Nori, Mortis, Bibi, Bolt) run over walls and delete throwers, denying them safe artillery.`,
+          priority: 'CRITICAL',
+          icon: '⚡',
+        });
+      }
+
+      // 6. Synergy: Immortal Tank + Healer Rush
+      if (allyComp.archetypeCounts.TANK > 0 && !enemyHasHeavyShredder) {
+        deductions.push({
+          id: 'support_healer',
+          targetArchetypes: ['SUPPORT', 'TANK'],
+          title: '💖 100% Win Condition: Immortal Tank + Healer Rush',
+          reason: `Enemy lacks dedicated heavy tank shredders (Colette/Chester/Clancy). Poco or Berry healing turns your ${allyBrawlers.find(b => b.archetype === 'TANK')?.name || 'Tank'} immortal, or Frank adds another massive HP stat-check.`,
+          priority: 'CRITICAL',
+          icon: '💖',
+        });
+      }
+
+      // Mode Objectives (Secondary)
+      if (session.map.mode === 'HEIST') {
+        deductions.push({
+          id: 'heist_objective',
+          targetArchetypes: ['THROWER', 'CONTROL', 'ANTI_TANK'],
+          title: '🎯 Heist Safe Shredding & Race Damage',
+          reason: 'Lock in top Heist safe melters and wall controllers (Chuck, Berry, Dynamike, Clancy, Colt, Crow, Lumi) to win the damage race.',
           priority: 'HIGH',
+          icon: '🎯',
+        });
+      } else if (session.map.mode === 'HOT_ZONE') {
+        deductions.push({
+          id: 'hotzone_objective',
+          targetArchetypes: ['CONTROL', 'ANTI_TANK'],
+          title: '🔥 Hot Zone Objective: Continuous Area Lockdown',
+          reason: 'Hot Zone favors brawlers with continuous zone denial (Lou freeze, Clancy Stage 3 burst, Finx, Juju dive).',
+          priority: 'HIGH',
+          icon: '🔥',
+        });
+      }
+    } else {
+      // =========================================================================
+      // INCOMPLETE INFORMATION: PREEMPTIVE THEORY & BASELINE GOOD PRACTICES
+      // =========================================================================
+
+      if (session.currentSlot === 1 && macroMeta === 'AGGRO') {
+        deductions.push({
+          id: 'first_pick_antitank',
+          targetArchetypes: ['ANTI_TANK'],
+          title: 'Draft Rule #1: First Pick Best Available Anti-Tank',
+          reason: 'In aggro modes (Brawl Ball, Hot Zone, Gem Grab, Heist), the #1 first pick is ALWAYS the best available Anti-Tank (Crow, Lou, Otis, Chester, Clancy). It prevents the enemy from playing aggressive space makers.',
+          priority: 'CRITICAL',
+          icon: '⚡',
+        });
+      }
+
+      if (macroMeta === 'AGGRO' && !allyComp.hasAntiTank && session.currentSlot > 1 && session.currentSlot < 6) {
+        deductions.push({
+          id: 'missing_antitank',
+          targetArchetypes: ['ANTI_TANK'],
+          title: 'Mandatory Fix: Secure an Anti-Tank Backbone',
+          reason: `${teamLabel} currently has NO Anti-Tank. Without an Anti-Tank, the opposing team can draft aggressive Tanks and Space Makers and run you down.`,
+          priority: 'CRITICAL',
+          icon: '🛡️',
+        });
+      }
+
+      if ((session.currentSlot === 4 || session.currentSlot === 5) && !allyComp.hasSpaceMakerOrTank) {
+        deductions.push({
+          id: 'spacemaker_lockout',
+          targetArchetypes: ['SPACE_MAKER'],
+          title: 'Space Maker Lockout: Deny Enemy Free Last Pick',
+          reason: `${teamLabel} currently has NO Space Maker or aggressive dive threat. In Slot 4/5, you MUST draft a Space Maker (Kenji, Kaze, Ollie, Bull, Mortis, Lily, Shade) to prevent the enemy from having a free, uncontested 6th pick Thrower or Sniper.`,
+          priority: 'CRITICAL',
           icon: '✨',
         });
       }
-    }
 
-    // Deduction 5: Tank Stat-Check ("Being Bigger")
-    if (enemyComp.archetypeCounts.SPACE_MAKER > 0 && enemyComp.archetypeCounts.ANTI_TANK === 0) {
-      deductions.push({
-        id: 'tank_stat_check',
-        targetArchetypes: ['TANK'],
-        title: 'Tank Stat-Check Deduction: "Being Bigger"',
-        reason: 'Enemy drafted Space Makers/Assassins with NO Anti-Tank. Tanks possess 10k-14k HP and stat-check them in 1v1s (Space Makers run out of ammo and feed your supers).',
-        priority: 'HIGH',
-        icon: '🧱',
-      });
-    }
+      if (session.currentSlot === 5 && allyComp.hasAntiTank && allyComp.hasSpaceMakerOrTank) {
+        if (!enemyComp.hasSpaceMakerOrTank) {
+          deductions.push({
+            id: 'preempt_enemy_dive',
+            targetArchetypes: ['CONTROL', 'ANTI_TANK'],
+            title: '🔮 Preempt Enemy 6th Pick: Anti-Dive & Zone Control',
+            reason: 'Enemy comp lacks dive/space and desperately needs a Space Maker or Tank on 6th pick. Lock in Hard CC / Zone Lockdown (Lumi, Otis, Surge, Gale, Nori, Naija) to preemptively render their last pick ineffective.',
+            priority: 'HIGH',
+            icon: '🔮',
+          });
+        } else if (!enemyComp.hasAntiTank) {
+          deductions.push({
+            id: 'preempt_enemy_tank',
+            targetArchetypes: ['ANTI_TANK', 'CONTROL'],
+            title: '🔮 Preempt Enemy 6th Pick: Heavy Tank Shredder',
+            reason: 'Enemy lacks anti-tank and may try to 6th-pick a heavy Tank (Frank/Draco). Lock in tank shredding control (Colette, Clancy, Chester, Griff) to permanently deny that win condition.',
+            priority: 'HIGH',
+            icon: '🔮',
+          });
+        } else {
+          if (session.map.mode === 'HEIST') {
+            deductions.push({
+              id: 'heist_safe_race',
+              targetArchetypes: ['THROWER', 'CONTROL', 'ANTI_TANK'],
+              title: '🎯 Heist Safe Melters & Wall Control',
+              reason: 'Both sides have Anti-Tank + Space Maker. Lock in top Heist safe melters and wall controllers (Chuck, Berry, Dynamike, Clancy, Lumi, Crow) to win the race.',
+              priority: 'HIGH',
+              icon: '🎯',
+            });
+          } else {
+            deductions.push({
+              id: 'comp_rounding',
+              targetArchetypes: ['CONTROL', 'SUPPORT', 'ANTI_TANK'],
+              title: '👑 S-Tier Comp Rounding & Mid Lockdown',
+              reason: 'Both sides have Anti-Tank + Space Maker. Lock in dominant controllers or support (Wendy, Lumi, Crow, Otis, Naija) to control mid-map.',
+              priority: 'HIGH',
+              icon: '👑',
+            });
+          }
+        }
+      }
 
-    // Deduction 6: 6th Pick Free Thrower Win Condition (Uncontested)
-    if (session.currentSlot === 6 && enemyComp.archetypeCounts.SPACE_MAKER === 0 && enemyBrawlers.length === 3) {
-      deductions.push({
-        id: 'free_thrower_win',
-        targetArchetypes: ['THROWER'],
-        title: '100% Win Condition: Uncontested Thrower',
-        reason: 'The enemy team drafted ZERO Space Makers or dive threats. A 6th pick Thrower is completely untouchable and results in a free 100% win.',
-        priority: 'CRITICAL',
-        icon: '💣',
-      });
-    }
+      if (!allyComp.hasSpaceMakerOrTank && (enemySquishies.length >= 1 || (enemyComp.burstRating < 65 && enemyBrawlers.length >= 1))) {
+        if (!deductions.some(d => d.id === 'spacemaker_lockout')) {
+          deductions.push({
+            id: 'spacemaker_punish',
+            targetArchetypes: ['SPACE_MAKER'],
+            title: 'Space Maker Deduction: Punish Low DPS & Dive Squishies',
+            reason: `Enemy drafted ${enemySquishies.length} squishy/low-burst brawlers. A Space Maker closes distance with dashes/jumps, forces 2+ enemies to peel, and locks out enemy free throwers.`,
+            priority: 'HIGH',
+            icon: '✨',
+          });
+        }
+      }
 
-    // Deduction 7: Immortal Tank Enabler (Ally Tank + Enemy lacks Heavy Tank Shredders)
-    const heavyTankShredders = ['colette', 'chester', 'clancy', 'crow', 'otis'];
-    const enemyHasHeavyShredder = enemyBrawlers.some(e => heavyTankShredders.includes(e.id));
-    if (allyComp.archetypeCounts.TANK > 0 && !enemyHasHeavyShredder && enemyBrawlers.length >= 2) {
-      deductions.push({
-        id: 'support_healer',
-        targetArchetypes: ['SUPPORT', 'TANK', 'THROWER'],
-        title: 'Support Multiplier Deduction: Immortal Tank Rush',
-        reason: 'Enemy lacks dedicated heavy tank shredders (Colette/Chester/Clancy). Poco/Berry healing turns your tank immortal, or Frank adds another massive HP stat-check.',
-        priority: 'HIGH',
-        icon: '💖',
-      });
-    }
+      // Tank Stat-Check ("Being Bigger")
+      if (enemyComp.archetypeCounts.SPACE_MAKER > 0 && enemyComp.archetypeCounts.ANTI_TANK === 0) {
+        deductions.push({
+          id: 'tank_stat_check',
+          targetArchetypes: ['TANK'],
+          title: 'Tank Stat-Check Deduction: "Being Bigger"',
+          reason: 'Enemy drafted Space Makers/Assassins with NO Anti-Tank. Tanks possess 10k-14k HP and stat-check them in 1v1s (Space Makers run out of ammo and feed your supers).',
+          priority: 'HIGH',
+          icon: '🧱',
+        });
+      }
 
-    // Deduction 8: Resilient Snipers / Flex 2/3 in Passive Meta
-    if (macroMeta === 'PASSIVE' && (session.currentSlot === 2 || session.currentSlot === 3)) {
-      deductions.push({
-        id: 'resilient_snipers',
-        targetArchetypes: ['SNIPER'],
-        title: 'Resilient Snipers Deduction: 2/3 Flex Counter-Picks',
-        reason: 'Against long-range anchors (e.g. Pierce), secure resilient snipers (Nani, Belle, Byron, Gus, RT) to stabilize your comp.',
-        priority: 'HIGH',
-        icon: '🎯',
-      });
-    }
+      // Immortal Tank Enabler (Ally Tank + Enemy lacks Heavy Tank Shredders)
+      if (allyComp.archetypeCounts.TANK > 0 && !enemyHasHeavyShredder && enemyBrawlers.length >= 2) {
+        deductions.push({
+          id: 'support_healer',
+          targetArchetypes: ['SUPPORT', 'TANK', 'THROWER'],
+          title: 'Support Multiplier Deduction: Immortal Tank Rush',
+          reason: 'Enemy lacks dedicated heavy tank shredders (Colette/Chester/Clancy). Poco/Berry healing turns your tank immortal, or Frank adds another massive HP stat-check.',
+          priority: 'HIGH',
+          icon: '💖',
+        });
+      }
 
-    // Deduction 9: Mode Objectives
-    if (session.map.mode === 'HEIST') {
-      const heistTargets: BrawlerArchetype[] = allyComp.hasSpaceMakerOrTank
-        ? ['THROWER', 'CONTROL', 'ANTI_TANK']
-        : ['THROWER', 'ANTI_TANK', 'CONTROL', 'SPACE_MAKER'];
-      deductions.push({
-        id: 'heist_objective',
-        targetArchetypes: heistTargets,
-        title: 'Heist Objective: Safe Shredding & Race Damage',
-        reason: 'Heist requires safe burst and wall control (Chuck, Berry, Dynamike, Clancy, Colt, Bull, Crow). If facing a Chuck, do not try to defend—race and out-damage on the opposite safe!',
-        priority: 'MEDIUM',
-        icon: '🎯',
-      });
-    } else if (session.map.mode === 'HOT_ZONE') {
-      deductions.push({
-        id: 'hotzone_objective',
-        targetArchetypes: ['ANTI_TANK', 'CONTROL'],
-        title: 'Hot Zone Objective: Continuous Area Lockdown',
-        reason: 'Hot Zone favors brawlers with continuous zone denial (Lou freeze, Clancy Stage 3 burst, Finx, Juju dive).',
-        priority: 'MEDIUM',
-        icon: '🔥',
-      });
-    } else if (macroMeta === 'PASSIVE') {
-      deductions.push({
-        id: 'passive_objective',
-        targetArchetypes: ['SNIPER', 'CONTROL'],
-        title: 'Bounty & Knockout Objective: Resilient Anchors & Flex',
-        reason: 'Prioritize resilient snipers (Pierce, RT, Belle, Byron, Gus) and high-value Knockout Hypercharges (Meeple, Bo).',
-        priority: 'MEDIUM',
-        icon: '🎯',
-      });
+      // Resilient Snipers / Flex 2/3 in Passive Meta
+      if (macroMeta === 'PASSIVE' && (session.currentSlot === 2 || session.currentSlot === 3)) {
+        deductions.push({
+          id: 'resilient_snipers',
+          targetArchetypes: ['SNIPER'],
+          title: 'Resilient Snipers Deduction: 2/3 Flex Counter-Picks',
+          reason: 'Against long-range anchors (e.g. Pierce), secure resilient snipers (Nani, Belle, Byron, Gus, RT) to stabilize your comp.',
+          priority: 'HIGH',
+          icon: '🎯',
+        });
+      }
+
+      // Mode Objectives
+      if (session.map.mode === 'HEIST') {
+        const heistTargets: BrawlerArchetype[] = allyComp.hasSpaceMakerOrTank
+          ? ['THROWER', 'CONTROL', 'ANTI_TANK']
+          : ['THROWER', 'ANTI_TANK', 'CONTROL', 'SPACE_MAKER'];
+        deductions.push({
+          id: 'heist_objective',
+          targetArchetypes: heistTargets,
+          title: 'Heist Objective: Safe Shredding & Race Damage',
+          reason: 'Heist requires safe burst and wall control (Chuck, Berry, Dynamike, Clancy, Colt, Bull, Crow). If facing a Chuck, do not try to defend—race and out-damage on the opposite safe!',
+          priority: 'MEDIUM',
+          icon: '🎯',
+        });
+      } else if (session.map.mode === 'HOT_ZONE') {
+        deductions.push({
+          id: 'hotzone_objective',
+          targetArchetypes: ['ANTI_TANK', 'CONTROL'],
+          title: 'Hot Zone Objective: Continuous Area Lockdown',
+          reason: 'Hot Zone favors brawlers with continuous zone denial (Lou freeze, Clancy Stage 3 burst, Finx, Juju dive).',
+          priority: 'MEDIUM',
+          icon: '🔥',
+        });
+      } else if (macroMeta === 'PASSIVE') {
+        deductions.push({
+          id: 'passive_objective',
+          targetArchetypes: ['SNIPER', 'CONTROL'],
+          title: 'Bounty & Knockout Objective: Resilient Anchors & Flex',
+          reason: 'Prioritize resilient snipers (Pierce, RT, Belle, Byron, Gus) and high-value Knockout Hypercharges (Meeple, Bo).',
+          priority: 'MEDIUM',
+          icon: '🎯',
+        });
+      }
     }
 
     return deductions;
@@ -586,7 +729,7 @@ export class DraftEngine {
   }
 
   /**
-   * Recommends picks driven by active role deductions and map synergy
+   * Recommends picks using strategic role deductions and counter-picking heuristics
    */
   public static recommendPicks(session: DraftSession): PickRecommendation[] {
     const pickingSide = getPickTeamForSlot(session.currentSlot);
@@ -596,11 +739,14 @@ export class DraftEngine {
     const allyBrawlers = allyPickedIds.map(id => BRAWLER_MAP[id]).filter(Boolean);
     const enemyBrawlers = enemyPickedIds.map(id => BRAWLER_MAP[id]).filter(Boolean);
 
+    const enemyComp = this.evaluateComp(enemyBrawlers, { isFirstPickTeam: pickingSide !== 'TEAM_A', currentSlot: session.currentSlot, enemyBrawlers: allyBrawlers, mode: session.map.mode });
+
     const unavailable = [...getAllBannedBrawlers(session), ...getAllPickedBrawlers(session)];
     const candidateBrawlers = BRAWLERS.filter(b => !unavailable.includes(b.id));
 
     const deductions = this.getDeductions(session);
     const recommendations: PickRecommendation[] = [];
+    const isAllEnemyKnown = enemyBrawlers.length === 3;
 
     candidateBrawlers.forEach(brawler => {
       let score = brawler.modeScores[session.map.mode];
@@ -627,12 +773,22 @@ export class DraftEngine {
       enemyBrawlers.forEach(enemy => {
         if (brawler.counters.includes(enemy.archetype) || brawler.counters.includes(enemy.id)) {
           countersCount++;
-          score += 15;
+          score += isAllEnemyKnown ? 25 : 15;
         }
         if (brawler.counteredBy.includes(enemy.archetype) || brawler.counteredBy.includes(enemy.id)) {
-          score -= 15;
+          score -= isAllEnemyKnown ? 25 : 15;
         }
       });
+
+      // Direct exploit bonuses when all 3 enemy brawlers are known
+      if (isAllEnemyKnown) {
+        if (!enemyComp.hasAntiTank && (brawler.archetype === 'TANK' || brawler.archetype === 'SPACE_MAKER')) {
+          score += 35;
+        }
+        if (!enemyComp.hasSpaceMakerOrTank && (brawler.archetype === 'THROWER' || brawler.archetype === 'SNIPER')) {
+          score += 35;
+        }
+      }
 
       // 3. Direct synergies with ally brawlers
       allyBrawlers.forEach(ally => {
@@ -643,13 +799,13 @@ export class DraftEngine {
 
       // Avoid duplicate Space Makers when team already has one
       if (brawler.archetype === 'SPACE_MAKER' && allyBrawlers.some(a => a.archetype === 'SPACE_MAKER')) {
-        score -= 30; // Heavy penalty: Team already has dive threat, avoid stacking duplicate space makers
+        score -= 30; 
       }
 
       // Special Heist Safe Melter boost
       if (session.map.mode === 'HEIST') {
         if (brawler.id === 'chuck' || brawler.id === 'berry' || brawler.id === 'dynamike' || brawler.id === 'sirius' || brawler.id === 'clancy' || brawler.id === 'colt' || brawler.id === 'crow' || brawler.id === 'lumi' || brawler.id === 'barley') {
-          score += 20; // Top competitive safe melter bonus on Heist
+          score += 20; 
         }
       }
 
@@ -664,7 +820,8 @@ export class DraftEngine {
         }
       } else if (session.currentSlot === 4 || session.currentSlot === 5) {
         if (brawler.archetype === 'THROWER' && brawler.id !== 'willow' && brawler.id !== 'berry') {
-          if (session.map.mode !== 'HEIST' && !enemyBrawlers.some(e => e.archetype === 'SPACE_MAKER')) {
+          // Only penalize thrower in Slot 4/5 if enemy has unrevealed future picks and no space maker
+          if (session.map.mode !== 'HEIST' && !isAllEnemyKnown && !enemyBrawlers.some(e => e.archetype === 'SPACE_MAKER')) {
             score -= 35;
             riskWarning = `Drafting Throwers before enemy 6th pick allows opponent to hard counter with a Space Maker.`;
           }

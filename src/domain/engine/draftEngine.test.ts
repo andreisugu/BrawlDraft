@@ -72,4 +72,44 @@ describe('DraftEngine - Bobby Pro Draft Masterclass Acceptance Tests', () => {
       });
     });
   });
+
+  // Test Direct Counter & Exploit Mode (Complete Enemy Information)
+  describe('Direct Counter & Exploit Mode (Complete Enemy Info)', () => {
+    it('exploits enemy Zero Anti-Tank + Zero Dive lineup (Nani, Eve, Bonnie on Hot Zone)', () => {
+      const map = MAP_MAP['ring_of_fire'];
+      const session: DraftSession = {
+        id: 'exploit_test_hot_zone',
+        map,
+        userSide: 'TEAM_B',
+        bans: { teamA: [], teamB: [] },
+        picks: {
+          teamA: ['nani', 'eve', 'bonnie'], // 3 enemy picks with 0 Anti-Tank and 0 Dive
+          teamB: [],
+        },
+        currentSlot: 2,
+        isComplete: false,
+      };
+
+      const deductions = DraftEngine.getDeductions(session);
+      const deductionIds = deductions.map(d => d.id);
+
+      // Verify exploit deductions are triggered
+      expect(deductionIds).toContain('exploit_no_antitank');
+      expect(deductionIds).toContain('exploit_no_spacemaker');
+
+      // Verify generic baseline rules are suppressed
+      expect(deductionIds).not.toContain('missing_antitank');
+      expect(deductionIds).not.toContain('first_pick_antitank');
+
+      const pickRecs = DraftEngine.recommendPicks(session);
+      const topArchetypes = pickRecs.slice(0, 6).map(r => r.brawler.archetype);
+
+      // Top picks should heavily feature Tanks, Space Makers, and Throwers
+      const hasExploitArchetype = topArchetypes.some(
+        arch => arch === 'TANK' || arch === 'SPACE_MAKER' || arch === 'THROWER'
+      );
+      expect(hasExploitArchetype).toBe(true);
+    });
+  });
 });
+
