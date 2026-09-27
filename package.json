@@ -2,6 +2,8 @@
   "name": "brawl-draft",
   "private": true,
   "version": "1.0.0",
+  "license": "MIT",
+  "homepage": "https://andreisugu.github.io/BrawlDraft",
   "type": "module",
   "scripts": {
     "dev": "vite",

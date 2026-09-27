@@ -28,6 +28,17 @@ export function App() {
         <p className="mt-1 text-[11px] text-gray-600">
           Built following Domain-Driven Design Distilled, A Philosophy of Software Design, and The Pragmatic Programmer.
         </p>
+        <p className="mt-2 text-[10px] text-gray-600">
+          This material is unofficial and is not endorsed by Supercell. For more information see Supercell's Fan Content Policy:{' '}
+          <a
+            href="https://www.supercell.com/fan-content-policy"
+            target="_blank"
+            rel="noreferrer"
+            className="underline hover:text-gray-400"
+          >
+            supercell.com/fan-content-policy
+          </a>.
+        </p>
       </footer>
     </div>
   );

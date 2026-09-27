@@ -1,53 +1,73 @@
-# BrawlDraft 🏆
-> **The Pro Brawl Stars Draft Assistant & Academy** — Based on *"The Best Draft Guide EVER"* (Parts 1 & 2) by **bobby - brawl stars**.
+# BrawlDraft
+
+[![Deploy to GitHub Pages](https://github.com/andreisugu/BrawlDraft/actions/workflows/deploy.yml/badge.svg)](https://github.com/andreisugu/BrawlDraft/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-brightgreen)](https://andreisugu.github.io/BrawlDraft/)
+
+BrawlDraft is a web-based competitive draft assistant and training simulator for Brawl Stars, built around competitive draft theory and competitive tier analyses.
+
+**Live Application:** [https://andreisugu.github.io/BrawlDraft/](https://andreisugu.github.io/BrawlDraft/)
 
 ---
 
-## 🎯 Features
+## Features
 
-1. **Interactive Draft Room (Live Pro Advisor)**:
-   - **Asymmetric Ban Advisor**: Automatically advises S-tier map bans when opponents have 1st pick, or 2/3 flex stabilizers / dangerous last picks when your team has 1st pick.
-   - **Slot-by-Slot Pro Recommendations**: Recommends the optimal brawler for every pick slot (1st Pick Anti-Tank backbone, 2/3 Stabilizers, 4/5 Space Maker Lockouts, and 6th Pick Hard-Counters).
-   - **Bobby's Pro Rationales**: Every recommendation explains *why* (e.g. *"Enemy drafted 2 low DPS snipers $\rightarrow$ Space Maker recommended to deny enemy last-pick thrower"*).
-   - **Live Comp Analytics**: Real-time Burst DPS rating, Effective HP stat-check rating, Range score, and live vulnerability warnings.
+1. **Interactive Draft Room (Live Competitive Advisor)**:
+   - **Asymmetric Ban Advisor**: Suggests priority map bans when the enemy team has 1st pick, or flex stabilizers and dangerous last picks when your team has 1st pick.
+   - **Slot-by-Slot Recommendations**: Suggests optimal picks for each position (1st Pick Anti-Tank anchor, 2nd/3rd flex stabilizers, 4th/5th Space Maker lockouts, and 6th pick hard-counters).
+   - **Tactical Rationales**: Each recommendation provides situational rationale based on map geometry, enemy draft threats, and lane duties.
+   - **Real-Time Team Composition Analytics**: Live computation of effective burst DPS, collective health/stat-check resilience, range coverage, and identified team vulnerabilities.
 
-2. **Pro Draft Academy (16 Interactive Quizzes)**:
-   - Contains all **10 Draft Scenarios** from Part 1 and all **6 Ban Tests** from Part 2.
-   - Interactive 5-second Pro Speed Timer option.
-   - Instant scoring with Bobby's breakdown and pro tips.
+2. **Draft Academy (Interactive Quizzes)**:
+   - Contains competitive draft scenarios and ban tests with real-time feedback.
+   - Optional speed timer to practice timed tournament draft decision-making.
+   - Detailed scoring breakdowns and strategic explanations.
 
-3. **7 Archetypes & Meta Cheatsheet**:
-   - Deep architectural breakdown of the 7 Pro Draft Classes (**Anti-Tank, Space Maker, Tank, Control, Sniper, Thrower, Support**).
-   - Color-coded trait system (Hypercharge, Stun/CC, Wall Break, Pierce, Special).
-   - Searchable roster with burst ratings, stats, and custom pro tips.
-
----
-
-## 🛠️ Architecture & Engineering Principles
-
-This repository strictly obeys:
-- **Domain-Driven Design Distilled** (*Vaughn Vernon*): Pure domain aggregates (`Brawler`, `BrawlMap`, `DraftSession`) isolated from UI framework code.
-- **A Philosophy of Software Design** (*John Ousterhout*): Deep `DraftEngine` module with minimal surface API hiding complex heuristics and scoring matrices.
-- **The Pragmatic Programmer** (*Hunt & Thomas*): DRY metadata representation and 16 automated unit test cases verifying Bobby's scenarios.
+3. **Archetype System & Meta Reference**:
+   - Covers the 7 core draft archetypes (Anti-Tank, Space Maker, Tank, Control, Sniper, Thrower, Support).
+   - Trait classification for Hypercharge, Crowd Control, Wall Break, Pierce, and utility abilities.
+   - Searchable roster with range parameters, health profiles, and drafting context.
 
 ---
 
-## 🚀 Quick Start
+## Architecture
+
+The draft engine is structured following core software design patterns:
+- **Domain Aggregates**: Clean separation between domain models (`Brawler`, `BrawlMap`, `DraftSession`), draft scoring heuristics, and UI components.
+- **Deep Modules**: The recommendation engine exposes a minimal surface interface while managing multi-factor scoring matrices, terrain deductions, and matchup matrices internally.
+- **Automated Verification**: Comprehensive unit test suite covering draft scenario test cases, property-based composition matrices, and counter-pick allocations.
+
+---
+
+## Quick Start
 
 ### Prerequisites
-- Node.js 22+ or [Nix](https://nixos.org/)
+- Node.js 22 or higher (or [Nix](https://nixos.org/))
 
-### Run Locally
+### Running Locally
 ```bash
-# Enter nix shell (if on NixOS/Nix)
+# Enter nix shell (if on NixOS / Nix)
 nix-shell
 
 # Install dependencies
-npm install
+npm ci
 
-# Start development server
+# Start local development server
 npm run dev
 
-# Run all 16 automated Bobby masterclass acceptance tests
+# Run automated tests
 npm test
+
+# Build production static bundle
+npm run build
 ```
+
+---
+
+## Legal & Disclaimer
+
+This material is unofficial and is not endorsed by Supercell. For more information see [Supercell's Fan Content Policy](https://www.supercell.com/fan-content-policy).
+
+## License
+
+Distributed under the [MIT License](LICENSE).
